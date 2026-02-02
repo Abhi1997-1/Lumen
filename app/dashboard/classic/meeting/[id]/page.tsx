@@ -13,9 +13,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
 interface MeetingPageProps {
-    params: {
+    params: Promise<{
         id: string
-    }
+    }>
 }
 
 export default async function ClassicMeetingPage({ params }: MeetingPageProps) {
@@ -59,7 +59,7 @@ export default async function ClassicMeetingPage({ params }: MeetingPageProps) {
 
                 {/* Left Panel: Transcript (Wide) */}
                 <div className="lg:col-span-8 flex flex-col gap-6 min-h-0 h-full overflow-hidden">
-                    <TranscriptView transcript={meeting.transcript || ""} />
+                    <TranscriptView originalTranscript={meeting.transcript || ""} />
                 </div>
 
                 {/* Right Panel: Intelligence Sidebar (Narrow) */}
