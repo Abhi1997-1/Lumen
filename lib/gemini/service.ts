@@ -1,0 +1,196 @@
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { GoogleAIFileManager } from "@google/generative-ai/server";
+import { decrypt } from "@/lib/crypto";
+import { createClient } from "@/lib/supabase/server";
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
+export async function processMeetingWithGemini(userId: string, storagePath: string) {
+    // 1. Get User Key
+    const supabase = await createClient();
+    const { data: settings } = await supabase.from('user_settings').select('gemini_api_key').eq('user_id', userId).single();
+
+    let apiKey = '';
+    if (settings?.gemini_api_key) {
+        apiKey = decrypt(settings.gemini_api_key);
+    } else if (process.env.GEMINI_API_KEY) {
+        apiKey = process.env.GEMINI_API_KEY;
+    } else {
+        throw new Error("Gemini API Key not found. Please add it in Settings.");
+    }
+
+    // 2. Download File from Supabase to Temp
+    const { data: fileData, error } = await supabase.storage.from('meetings').download(storagePath);
+    if (error) throw error;
+
+    const buffer = Buffer.from(await fileData.arrayBuffer());
+    const tempFilePath = path.join(os.tmpdir(), `upload-${Date.now()}.mp3`);
+    fs.writeFileSync(tempFilePath, buffer);
+
+    try {
+        // 3. Upload to Gemini
+        const fileManager = new GoogleAIFileManager(apiKey);
+        const uploadResponse = await fileManager.uploadFile(tempFilePath, {
+            mimeType: fileData.type || "audio/mp3",
+            displayName: "Meeting Audio",
+        });
+
+        // 3.5 Wait for file to be active
+        let file = await fileManager.getFile(uploadResponse.file.name);
+        while (file.state === "PROCESSING") {
+            // Sleep for 2 seconds
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            file = await fileManager.getFile(uploadResponse.file.name);
+        }
+
+        if (file.state === "FAILED") {
+            throw new Error("Video processing failed.");
+        }
+
+        // 4. Generate Content
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({
+            model: "gemini-flash-latest",
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                        transcript: { type: SchemaType.STRING },
+                        summary: { type: SchemaType.STRING },
+                        action_items: {
+                            type: SchemaType.ARRAY,
+                            items: { type: SchemaType.STRING }
+                        }
+                    }
+                }
+            }
+        });
+
+        const prompt = "Transcribe the following audio precisely. Identify different speakers (e.g., 'Speaker 1:', 'Speaker 2:') and place each speaker's dialogue on a new line. Do not use timestamps. Provide an 'Executive Summary' and a list of 'action_items'. IMPORTANT: If the audio is silent, unclear, or contains no speech, return an empty transcript and state 'No speech detected' in the summary. Do not hallucinate conversation.";
+
+        const result = await model.generateContent([
+            {
+                fileData: {
+                    mimeType: uploadResponse.file.mimeType,
+                    fileUri: uploadResponse.file.uri
+                }
+            },
+            { text: prompt }
+        ]);
+
+        const responseText = result.response.text();
+        const usage = result.response.usageMetadata;
+
+        const parsedResponse = JSON.parse(responseText);
+
+        return {
+            ...parsedResponse,
+            usage: {
+                input_tokens: usage?.promptTokenCount || 0,
+                output_tokens: usage?.candidatesTokenCount || 0,
+                total_tokens: usage?.totalTokenCount || 0
+            }
+        };
+
+    } finally {
+        if (fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+        }
+    }
+}
+
+// Helper to get authorized model
+async function getGeminiModel(userId: string) {
+    const supabase = await createClient();
+    const { data: settings } = await supabase.from('user_settings').select('gemini_api_key').eq('user_id', userId).single();
+
+    let apiKey = '';
+    if (settings?.gemini_api_key) {
+        apiKey = decrypt(settings.gemini_api_key);
+    } else if (process.env.GEMINI_API_KEY) {
+        apiKey = process.env.GEMINI_API_KEY;
+    } else {
+        throw new Error("Gemini API Key not found.");
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    return genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+}
+
+export async function generateTranslation(userId: string, text: string, targetLanguage: string) {
+    try {
+        const model = await getGeminiModel(userId);
+        const prompt = `Translate the following transcript text into ${targetLanguage}. Maintain the speaker labels (e.g., 'Speaker 1:') if present, but translate the dialogue. Return ONLY the translated text.
+
+Text to translate:
+${text}`;
+
+        const result = await model.generateContent(prompt);
+        return result.response.text();
+    } catch (error) {
+        console.error("Translation error:", error);
+        throw new Error("Failed to translate transcript.");
+    }
+}
+
+export async function generateAnswer(userId: string, context: string, question: string) {
+    try {
+        const model = await getGeminiModel(userId);
+        const prompt = `You are a helpful AI assistant analyzing a meeting transcript.
+        
+Context (Transcript/Summary):
+${context.substring(0, 10000)} // Limit context window
+
+User Question: ${question}
+
+Answer concisely and accurately based ONLY on the provided context. If the answer is not in the context, say so.`;
+
+        const result = await model.generateContent(prompt);
+        return result.response.text();
+    } catch (error) {
+        console.error("Chat error:", error);
+        throw new Error("Failed to generate answer.");
+    }
+}
+
+export async function generateMeetingTranslation(userId: string, meetingSummary: string, meetingActionItems: string[], meetingTranscript: string, targetLanguage: string) {
+    try {
+        const model = await getGeminiModel(userId);
+
+        const prompt = `Translate the following meeting content into ${targetLanguage}.
+        
+        Input Data:
+        SUMMARY:
+        ${meetingSummary}
+
+        ACTION ITEMS (JSON Array):
+        ${JSON.stringify(meetingActionItems)}
+
+        TRANSCRIPT:
+        ${meetingTranscript.substring(0, 30000)}
+
+        Instructions:
+        1. return a JSON object with keys: "summary" (string), "action_items" (array of strings), "transcript" (string).
+        2. Translate the summary text.
+        3. Translate each item in the action_items array.
+        4. Translate the transcript text. Kkeep speaker labels (e.g. "Speaker 1:") in original language, translate only the speech.
+        5. Return ONLY the raw JSON string. Do not use markdown like \`\`\`json.`;
+
+        const result = await model.generateContent(prompt);
+        let responseText = result.response.text();
+
+        // Clean up markdown if present
+        if (responseText.startsWith('```json')) {
+            responseText = responseText.replace(/^```json/, '').replace(/```$/, '');
+        } else if (responseText.startsWith('```')) {
+            responseText = responseText.replace(/^```/, '').replace(/```$/, '');
+        }
+
+        return JSON.parse(responseText.trim());
+    } catch (error) {
+        console.error("Meeting translation error:", error);
+        throw new Error("Failed to translate meeting content.");
+    }
+}

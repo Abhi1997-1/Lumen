@@ -1,0 +1,58 @@
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+
+export async function middleware(request: NextRequest) {
+    try {
+        let response = NextResponse.next({
+            request: {
+                headers: request.headers,
+            },
+        })
+
+        const supabase = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+                cookies: {
+                    getAll() {
+                        return request.cookies.getAll()
+                    },
+                    setAll(cookiesToSet) {
+                        try {
+                            cookiesToSet.forEach(({ name, value, options }) => request.cookies.set({ name, value, ...options }))
+                        } catch (err) {
+                            // Suppress error if request cookies are immutable (which they are in some Next.js environments)
+                        }
+
+                        response = NextResponse.next({
+                            request: {
+                                headers: request.headers,
+                            },
+                        })
+                        cookiesToSet.forEach(({ name, value, options }) =>
+                            response.cookies.set(name, value, options)
+                        )
+                    },
+                },
+            }
+        )
+
+        await supabase.auth.getUser()
+
+        return response
+    } catch (e) {
+        console.error('Middleware Critical Error:', e)
+        // Return a response to prevent 500, but log the error
+        return NextResponse.next({
+            request: {
+                headers: request.headers,
+            },
+        })
+    }
+}
+
+export const config = {
+    matcher: [
+        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    ],
+}
