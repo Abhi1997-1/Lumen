@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 
-export function ExportButtons() {
+export function ExportButtons({ meetingId }: { meetingId?: string }) {
     return (
         <div className="space-y-4">
             <div className="text-xs font-bold text-zinc-500 uppercase tracking-widest px-1">Push to App</div>
