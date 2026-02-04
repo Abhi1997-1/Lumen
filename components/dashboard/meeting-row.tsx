@@ -1,8 +1,15 @@
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreVertical } from "lucide-react"
+import { MoreVertical, Eye, Pencil, Trash } from "lucide-react"
 import { TableRow, TableCell } from "@/components/ui/table"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface MeetingRowProps {
     meeting: {
@@ -107,9 +114,30 @@ export function MeetingRow({ meeting }: MeetingRowProps) {
 
             {/* Cell 6: Actions */}
             <TableCell className="text-right">
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                    <MoreVertical className="h-4 w-4" />
-                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <Link href={`/dashboard/${meeting.id}`}>
+                            <DropdownMenuItem className="cursor-pointer">
+                                <Eye className="mr-2 h-4 w-4" />
+                                <span>View Details</span>
+                            </DropdownMenuItem>
+                        </Link>
+                        <DropdownMenuItem className="cursor-pointer">
+                            <Pencil className="mr-2 h-4 w-4" />
+                            <span>Rename</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-100 dark:focus:bg-red-900/20">
+                            <Trash className="mr-2 h-4 w-4" />
+                            <span>Delete</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </TableCell>
         </TableRow>
     )

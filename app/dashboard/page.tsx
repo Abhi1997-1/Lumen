@@ -60,9 +60,8 @@ export default async function DashboardPage() {
                             />
                         </div>
                         <ModeToggle />
-                        <Button variant="outline" className="hidden sm:flex border-border bg-card hover:bg-accent text-foreground">
-                            <Upload className="mr-2 h-4 w-4" /> Import Link
-                        </Button>
+                        <ModeToggle />
+                        {/* Import Link button removed */}
                         <Link href="/dashboard/new">
                             <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
                                 <Plus className="mr-2 h-4 w-4" /> Upload Recording
@@ -109,6 +108,9 @@ export default async function DashboardPage() {
 
             {/* Meeting List Table - Flexible Height */}
             <div className="flex-1 min-h-0 flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold tracking-tight">Meetings Overview</h2>
+                </div>
                 <div className="flex-1 flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden">
                     <div className="flex-1 overflow-auto custom-scrollbar">
                         <Table>
