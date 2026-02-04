@@ -17,13 +17,11 @@ import {
 
 const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Live Studio', href: '/dashboard/live', icon: Mic },
     { name: 'Meetings', href: '/dashboard/meetings', icon: FileText },
     { name: 'Notes', href: '/dashboard/notes', icon: FileText },
     { name: 'Calendar', href: '/dashboard/calendar', icon: Calendar },
     { name: 'Teams', href: '/dashboard/teams', icon: Users },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
-    { name: 'Classic View', href: '/dashboard/classic', icon: LayoutDashboard },
 ]
 
 const secondaryNavItems = [

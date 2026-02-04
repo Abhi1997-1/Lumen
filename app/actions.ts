@@ -48,40 +48,38 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
 
     if (error) return { success: false, error: error.message }
 
-    // Trigger Gemini processing
-    try {
-        const result = await processMeetingWithGemini(user.id, storagePath)
+    // Trigger Gemini processing (Fire and forget-ish)
+    // We do NOT await this so the user isn't stuck waiting.
+    // In Vercel serverless, this might be terminated early, but for now this fixes the "Stuck" UI.
+    // Ideally use a background job queue (e.g. Inngest/Temporal) for production.
+    processMeetingWithGemini(user.id, storagePath)
+        .then(async (result) => {
+            // Calculate estimated duration if not provided
+            const wordCount = result.transcript ? result.transcript.trim().split(/\s+/).length : 0;
+            const estimatedDuration = Math.ceil(wordCount / 2.5);
+            const finalDuration = durationSeconds > 0 ? durationSeconds : estimatedDuration;
 
-        // Calculate estimated duration if not provided (approx 150 wpm = 2.5 words/sec)
-        const wordCount = result.transcript ? result.transcript.trim().split(/\s+/).length : 0;
-        const estimatedDuration = Math.ceil(wordCount / 2.5);
+            await supabase
+                .from('meetings')
+                .update({
+                    transcript: result.transcript,
+                    summary: result.summary,
+                    action_items: result.action_items,
+                    input_tokens: result.usage?.input_tokens || 0,
+                    output_tokens: result.usage?.output_tokens || 0,
+                    total_tokens: result.usage?.total_tokens || 0,
+                    status: 'completed',
+                    participants: result.participants || [],
+                    duration: finalDuration
+                })
+                .eq('id', meeting.id)
+        })
+        .catch(async (e) => {
+            console.error("Async processing failed:", e);
+            await supabase.from('meetings').update({ status: 'failed' }).eq('id', meeting.id)
+        })
 
-        // Use provided duration if valid, otherwise use estimate
-        const finalDuration = durationSeconds > 0 ? durationSeconds : estimatedDuration;
-
-        await supabase
-            .from('meetings')
-            .update({
-                transcript: result.transcript,
-                summary: result.summary,
-                action_items: result.action_items,
-                input_tokens: result.usage?.input_tokens || 0,
-                output_tokens: result.usage?.output_tokens || 0,
-                total_tokens: result.usage?.total_tokens || 0,
-                status: 'completed',
-                participants: result.participants || [],
-                duration: finalDuration,
-                // title: `Meeting ${new Date().toLocaleString()}` // Don't overwrite title
-            })
-            .eq('id', meeting.id)
-
-        revalidatePath('/dashboard')
-        return { success: true, meetingId: meeting.id }
-    } catch (e: any) {
-        console.error(e);
-        await supabase.from('meetings').update({ status: 'failed' }).eq('id', meeting.id)
-        return { success: false, error: e.message }
-    }
+    return { success: true, meetingId: meeting.id }
 }
 
 export async function updateMeetingActionItems(meetingId: string, items: string[]) {
@@ -169,6 +167,20 @@ export async function translateMeeting(meetingId: string, targetLanguage: string
             targetLanguage
         )
         return { success: true, data: translation }
+    } catch (error: any) {
+        return { success: false, error: error.message }
+    }
+}
+
+export async function askFolderGemini(folderId: string, question: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Not authenticated" }
+
+    try {
+        const { processFolderChat } = await import('@/lib/gemini/service')
+        const answer = await processFolderChat(user.id, folderId, question)
+        return { success: true, answer }
     } catch (error: any) {
         return { success: false, error: error.message }
     }

@@ -68,7 +68,7 @@ export async function processMeetingWithGemini(userId: string, storagePath: stri
             }
         });
 
-        const prompt = "Transcribe the following audio precisely. Identify different speakers (e.g., 'Speaker 1:', 'Speaker 2:') and place each speaker's dialogue on a new line. Do not use timestamps. Provide an 'Executive Summary' and a list of 'action_items'. IMPORTANT: If the audio is silent, unclear, or contains no speech, return an empty transcript and state 'No speech detected' in the summary. Do not hallucinate conversation.";
+        const prompt = "Analyze this audio transcript. 1) Provide a verbatim transcript properly formatted with 'Speaker X:' labels. 2) Provide a comprehensive 'Executive Summary' capturing the key discussion points and decisions. 3) List all 'action_items' clearly. IMPORTANT: Ensure the Output matches the JSON schema exactly. If silence/no speech, return empty fields.";
 
         const result = await model.generateContent([
             {
@@ -192,5 +192,45 @@ export async function generateMeetingTranslation(userId: string, meetingSummary:
     } catch (error) {
         console.error("Meeting translation error:", error);
         throw new Error("Failed to translate meeting content.");
+    }
+}
+
+export async function processFolderChat(userId: string, folderId: string, question: string) {
+    try {
+        const supabase = await createClient();
+
+        // 1. Fetch all meetings in the folder
+        const { data: meetings, error } = await supabase
+            .from('meetings')
+            .select('title, transcript, summary, created_at')
+            .eq('folder_id', folderId)
+            .eq('user_id', userId);
+
+        if (error) throw error;
+        if (!meetings || meetings.length === 0) {
+            return "This folder has no meetings yet.";
+        }
+
+        // 2. Construct large context
+        let fullContext = `You are a helpful assistant analyzing a GROUP of meeting transcripts.\n\n`;
+
+        meetings.forEach((m, i) => {
+            const date = new Date(m.created_at).toLocaleDateString();
+            fullContext += `--- MEETING ${i + 1}: ${m.title || 'Untitled'} (${date}) ---\n`;
+            fullContext += `SUMMARY: ${m.summary || 'N/A'}\n`;
+            fullContext += `TRANSCRIPT START:\n${m.transcript ? m.transcript.substring(0, 25000) : 'No transcript'}\nTRANSCRIPT END\n\n`;
+        });
+
+        fullContext += `\nUSER QUESTION: ${question}\n\n`;
+        fullContext += `INSTRUCTIONS: Answer the question based on the synthesized knowledge from ALL the meetings above. Cite specific meetings (e.g., "In the Marketing Sync...") if relevant.`;
+
+        // 3. Send to Gemini
+        const model = await getGeminiModel(userId);
+        const result = await model.generateContent(fullContext);
+        return result.response.text();
+
+    } catch (error) {
+        console.error("Folder chat error:", error);
+        throw new Error("Failed to generate answer for folder.");
     }
 }

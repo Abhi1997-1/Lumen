@@ -31,7 +31,8 @@ import {
     List,
     Link as LinkIcon,
     Languages,
-    Loader2
+    Loader2,
+    ArrowLeft
 } from 'lucide-react'
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -43,6 +44,14 @@ import {
 } from "@/components/ui/select";
 import { translateMeeting } from "@/app/actions";
 import { toast } from "sonner";
+
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { exportMeetingToProvider } from "@/app/actions/export"
 
 interface MeetingViewProps {
     meeting: any;
@@ -98,6 +107,20 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
             setIsTranslating(false);
         }
     };
+
+    const handleExport = async (provider: 'notion' | 'onenote') => {
+        const toastId = toast.loading(`Exporting to ${provider === 'notion' ? 'Notion' : 'OneNote'}...`)
+        try {
+            const result = await exportMeetingToProvider(meeting.id, provider)
+            if (result.success) {
+                toast.success('Export successful!', { id: toastId })
+            } else {
+                toast.error(result.error || 'Export failed', { id: toastId })
+            }
+        } catch (error) {
+            toast.error('Export failed', { id: toastId })
+        }
+    }
 
     if (!meeting.transcript && !meeting.summary) {
         return <div className="p-8"><MeetingProcessing /></div>
@@ -175,9 +198,11 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                 {/* Visualizer / Audio Player Placeholder (Optional) */}
                 <div className="h-16 border-b border-border/40 flex items-center justify-between px-6 bg-card/50">
                     <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-foreground transition-colors">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                        </Button>
+                        <Link href="/dashboard/meetings">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-foreground transition-colors" title="Back to Meetings">
+                                <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                        </Link>
                         <div className="h-8 w-[1px] bg-border mx-2" />
                         <h1 className="text-sm font-medium text-foreground truncate max-w-[300px]">
                             {currentMeeting.title}
@@ -288,9 +313,22 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
 
                 <div className="p-4 border-t border-border/40 bg-background">
                     <div className="flex gap-2">
-                        <Button variant="outline" className="flex-1 bg-secondary border-border hover:bg-accent text-foreground">
-                            <ExportIcon className="mr-2 h-4 w-4" /> Export
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="flex-1 bg-secondary border-border hover:bg-accent text-foreground">
+                                    <ExportIcon className="mr-2 h-4 w-4" /> Export
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                                <DropdownMenuItem disabled className="cursor-not-allowed opacity-50">
+                                    <span className="font-serif mr-2 font-bold">N</span> Notion (Coming Soon)
+                                </DropdownMenuItem>
+                                <DropdownMenuItem disabled className="cursor-not-allowed opacity-50">
+                                    <span className="mr-2 font-bold text-[#7719aa]">N</span> OneNote (Coming Soon)
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
                         <Button className="flex-1 bg-blue-600 hover:bg-blue-500 text-white border-0">
                             <ShareIcon className="mr-2 h-4 w-4" /> Share
                         </Button>

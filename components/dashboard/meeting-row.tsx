@@ -1,7 +1,9 @@
+"use client"
+
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreVertical, Eye, Pencil, Trash } from "lucide-react"
+import { MoreVertical, Eye, Pencil, Trash, FolderInput } from "lucide-react"
 import { TableRow, TableCell } from "@/components/ui/table"
 import {
     DropdownMenu,
@@ -10,6 +12,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { MoveToFolderDialog } from "@/components/folders/move-to-folder-dialog"
 
 interface MeetingRowProps {
     meeting: {
@@ -21,6 +24,7 @@ interface MeetingRowProps {
         duration: number | null
         participants: string[] | null
         status: string | null
+        folder_id: string | null
     }
 }
 
@@ -131,6 +135,14 @@ export function MeetingRow({ meeting }: MeetingRowProps) {
                             <Pencil className="mr-2 h-4 w-4" />
                             <span>Rename</span>
                         </DropdownMenuItem>
+
+                        <MoveToFolderDialog meetingId={meeting.id} currentFolderId={meeting.folder_id}>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
+                                <FolderInput className="mr-2 h-4 w-4" />
+                                <span>Move to Folder</span>
+                            </DropdownMenuItem>
+                        </MoveToFolderDialog>
+
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-100 dark:focus:bg-red-900/20">
                             <Trash className="mr-2 h-4 w-4" />

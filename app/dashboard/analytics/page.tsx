@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -26,14 +26,32 @@ import {
     ResponsiveContainer,
 } from 'recharts'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import { format, subDays, isSameDay } from 'date-fns'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { format, subDays, isSameDay, startOfMonth, isAfter, parseISO } from 'date-fns'
+import { PaginationControls } from "@/components/dashboard/pagination-controls"
+
+const ITEMS_PER_PAGE = 5
 
 export default function AnalyticsPage() {
     const supabase = createClient()
     const router = useRouter()
+    const searchParams = useSearchParams()
+
+    // State
     const [loading, setLoading] = useState(true)
     const [meetings, setMeetings] = useState<any[]>([])
+    const [timeRange, setTimeRange] = useState<'7D' | '30D' | 'ALL'>('7D')
+
+    // Pagination State
+    // We handle pagination internally here because the props for PaginationControls usually expect URL params, 
+    // but here we are filtering client-side for the table. 
+    // However, looking at the PaginationControls component, it reads from URL. 
+    // Let's stick to URL-based pagination for consistency if possible, or just manage state locally.
+    // If we use URL, we need to pass searchParams. 
+    // The previous implementation of PaginationControls reads `page` param.
+    // So let's sync local page with URL page.
+    const currentPage = Number(searchParams.get('page')) || 1
+
     const [stats, setStats] = useState({
         totalMeetings: 0,
         totalHours: 0,
@@ -41,7 +59,6 @@ export default function AnalyticsPage() {
         estCost: 0,
         savings: 0
     })
-    const [chartData, setChartData] = useState<any[]>([])
 
     useEffect(() => {
         fetchData()
@@ -60,17 +77,23 @@ export default function AnalyticsPage() {
                 .order('created_at', { ascending: false })
 
             if (meetingsData) {
-                // augment data with calculated fields for demo
+                // Process real data
                 const processed = meetingsData.map(m => {
-                    // Mock duration between 15m and 90m if not real
-                    const durationMin = 30;
-                    const tokens = Math.floor(durationMin * 150 * 1.5); // approx 150 words/min * 1.5 tokens/word
-                    const cost = (tokens / 1000000) * 0.50; // $0.50 per 1M tokens (approx Gemini Pro pricing)
+                    const durationSec = m.duration || 0;
+                    const durationMin = Math.floor(durationSec / 60);
+                    const durationRemSec = durationSec % 60;
+
+                    const inputTokens = m.input_tokens || 0;
+                    const outputTokens = m.output_tokens || 0;
+                    const totalTokens = m.total_tokens || (inputTokens + outputTokens);
+
+                    // Pricing for Gemini 1.5 Flash (approx)
+                    const cost = ((inputTokens / 1_000_000) * 0.075) + ((outputTokens / 1_000_000) * 0.30);
 
                     return {
                         ...m,
-                        durationStr: `${durationMin}m 00s`,
-                        tokens: tokens,
+                        durationStr: `${durationMin}m ${durationRemSec}s`,
+                        tokens: totalTokens,
                         cost: cost,
                         formattedDate: format(new Date(m.created_at), 'MMM d, yyyy')
                     }
@@ -78,13 +101,14 @@ export default function AnalyticsPage() {
 
                 setMeetings(processed)
 
-                // Calculate Totals
+                // Calculate Totals (All Time)
                 const totalM = processed.length
-                const totalH = (processed.length * 30) / 60
+                const totalSec = processed.reduce((acc, curr) => acc + (curr.duration || 0), 0)
+                const totalH = totalSec / 3600
                 const totalTok = processed.reduce((acc, curr) => acc + curr.tokens, 0)
                 const totalCost = processed.reduce((acc, curr) => acc + curr.cost, 0)
-                const competitorCost = totalM * 10 // Assume $10/meeting competitor
-                const savings = competitorCost - totalCost
+                const competitorCost = totalH * 1.00
+                const savings = Math.max(0, competitorCost - totalCost)
 
                 setStats({
                     totalMeetings: totalM,
@@ -93,26 +117,6 @@ export default function AnalyticsPage() {
                     estCost: totalCost,
                     savings: savings
                 })
-
-                // Generate Chart Data (Last 7 days)
-                const last7Days = Array.from({ length: 7 }, (_, i) => {
-                    const d = subDays(new Date(), 6 - i)
-                    return {
-                        date: d,
-                        name: format(d, 'MMM d'),
-                        tokens: 0
-                    }
-                })
-
-                processed.forEach(m => {
-                    const mDate = new Date(m.created_at)
-                    const dayStat = last7Days.find(d => isSameDay(d.date, mDate))
-                    if (dayStat) {
-                        dayStat.tokens += m.tokens
-                    }
-                })
-
-                setChartData(last7Days)
             }
 
         } catch (error) {
@@ -121,6 +125,44 @@ export default function AnalyticsPage() {
             setLoading(false)
         }
     }
+
+    // Dynamic Chart Data
+    const chartData = useMemo(() => {
+        if (!meetings.length && loading) return []
+
+        const now = new Date()
+        let daysToLookBack = 7
+
+        if (timeRange === '30D') daysToLookBack = 30
+        if (timeRange === 'ALL') daysToLookBack = 90 // Cap 'All' at 90 days for chart readability for now
+
+        const labels = Array.from({ length: daysToLookBack }, (_, i) => {
+            const d = subDays(now, daysToLookBack - 1 - i)
+            return {
+                date: d,
+                name: format(d, 'MMM d'),
+                tokens: 0
+            }
+        })
+
+        meetings.forEach(m => {
+            const mDate = new Date(m.created_at)
+            // For 'ALL', if we have data older than 90 days, we might miss it in this simple view
+            // But for this purpose:
+            const dayStat = labels.find(d => isSameDay(d.date, mDate))
+            if (dayStat) {
+                dayStat.tokens += m.tokens
+            }
+        })
+
+        return labels
+    }, [meetings, timeRange, loading])
+
+    // Pagination Logic
+    const currentTableData = useMemo(() => {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+        return meetings.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+    }, [meetings, currentPage])
 
     const formatTokens = (num: number) => {
         if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
@@ -144,12 +186,29 @@ export default function AnalyticsPage() {
                             <p className="text-zinc-400">Track your Gemini API consumption and cost savings.</p>
                         </div>
                         <div className="flex bg-[#1F2128] rounded-lg p-1">
-                            <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white h-8 text-xs">Last 7 Days</Button>
-                            <Button size="sm" className="bg-blue-600 text-white hover:bg-blue-500 h-8 text-xs shadow-lg shadow-blue-500/20">This Month</Button>
-                            <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white h-8 text-xs">All Time</Button>
-                            <Separator orientation="vertical" className="mx-1 h-4 self-center bg-zinc-700" />
-                            <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white h-8 text-xs gap-2">
-                                <Calendar className="h-3 w-3" /> Custom
+                            <Button
+                                variant={timeRange === '7D' ? 'default' : 'ghost'}
+                                onClick={() => setTimeRange('7D')}
+                                size="sm"
+                                className={`h-8 text-xs ${timeRange === '7D' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-400 hover:text-white'}`}
+                            >
+                                Last 7 Days
+                            </Button>
+                            <Button
+                                variant={timeRange === '30D' ? 'default' : 'ghost'}
+                                onClick={() => setTimeRange('30D')}
+                                size="sm"
+                                className={`h-8 text-xs ${timeRange === '30D' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-400 hover:text-white'}`}
+                            >
+                                Last 30 Days
+                            </Button>
+                            <Button
+                                variant={timeRange === 'ALL' ? 'default' : 'ghost'}
+                                onClick={() => setTimeRange('ALL')}
+                                size="sm"
+                                className={`h-8 text-xs ${timeRange === 'ALL' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-400 hover:text-white'}`}
+                            >
+                                All Time
                             </Button>
                         </div>
                     </div>
@@ -301,7 +360,7 @@ export default function AnalyticsPage() {
                             <CardTitle className="text-lg font-semibold text-white">Recent Processed Meetings</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0 mt-4">
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto min-h-[300px]">
                                 <table className="w-full text-sm text-left">
                                     <thead className="text-xs text-zinc-500 uppercase bg-[#1A1D24] border-y border-[#1F2128]">
                                         <tr>
@@ -313,7 +372,7 @@ export default function AnalyticsPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-[#1F2128]">
-                                        {meetings.map((meeting, i) => (
+                                        {currentTableData.map((meeting, i) => (
                                             <tr
                                                 key={i}
                                                 onClick={() => router.push(`/dashboard/${meeting.id}`)}
@@ -338,6 +397,19 @@ export default function AnalyticsPage() {
                                     </tbody>
                                 </table>
                             </div>
+
+                            {/* Pagination Controls */}
+                            <div className="p-4 border-t border-[#1F2128] flex flex-col items-center">
+                                <PaginationControls
+                                    totalCount={meetings.length}
+                                    currentPage={currentPage}
+                                    pageSize={ITEMS_PER_PAGE}
+                                />
+                                <div className="text-center mt-2 text-xs text-zinc-500">
+                                    Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, meetings.length)} of {meetings.length} results
+                                </div>
+                            </div>
+
                         </CardContent>
                     </Card>
 

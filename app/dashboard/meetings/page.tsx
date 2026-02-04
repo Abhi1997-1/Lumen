@@ -1,13 +1,22 @@
 import { createClient } from '@/lib/supabase/server'
 import { MeetingRow } from '@/components/dashboard/meeting-row'
+import { FolderList } from '@/components/folders/folder-list'
 import { Button } from '@/components/ui/button'
-import { Plus, Search, Filter, Upload } from 'lucide-react'
+import { Plus, Upload } from 'lucide-react'
 import Link from 'next/link'
-import { Input } from '@/components/ui/input'
 import { redirect } from 'next/navigation'
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { SearchInput } from '@/components/dashboard/search-input'
+import { DateFilter } from '@/components/dashboard/date-filter'
+import { PaginationControls } from '@/components/dashboard/pagination-controls'
+import { DatePickerWithRange } from '@/components/dashboard/date-range-picker'
+import { AdvancedSearchToggle } from '@/components/dashboard/advanced-search-toggle'
 
-export default async function MeetingsPage() {
+export default async function MeetingsPage({
+    searchParams,
+}: {
+    searchParams: { page?: string, query?: string, date?: string, from_date?: string, to_date?: string }
+}) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -15,11 +24,54 @@ export default async function MeetingsPage() {
         redirect('/login')
     }
 
-    const { data: meetings, error } = await supabase
+    const currentPage = Number(searchParams?.page) || 1
+    const query = searchParams?.query || ''
+    const dateFilter = searchParams?.date || 'all'
+    const fromDate = searchParams?.from_date
+    const toDate = searchParams?.to_date
+
+    // Config: 8 items per page
+    const ITEMS_PER_PAGE = 8
+    const from = (currentPage - 1) * ITEMS_PER_PAGE
+    const to = from + ITEMS_PER_PAGE - 1
+
+    // 1. Build Base Query for Filtering
+    let dbQuery = supabase
         .from('meetings')
-        .select('*, status, duration, participants')
+        .select('*, status, duration, participants', { count: 'exact' })
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
+
+    // 2. Apply Search (Title OR Transcript)
+    if (query) {
+        dbQuery = dbQuery.or(`title.ilike.%${query}%,transcript.ilike.%${query}%`)
+    }
+
+    // 3. Apply Date Filter (Presets OR Custom Range)
+    if (fromDate && toDate) {
+        // Custom Range takes precedence
+        dbQuery = dbQuery.gte('created_at', fromDate).lte('created_at', toDate)
+    } else if (dateFilter !== 'all') {
+        const now = new Date()
+        let filterDate = new Date()
+
+        switch (dateFilter) {
+            case 'today':
+                filterDate.setHours(0, 0, 0, 0)
+                break;
+            case 'week':
+                filterDate.setDate(now.getDate() - 7)
+                break;
+            case 'month':
+                filterDate.setDate(now.getDate() - 30)
+                break;
+        }
+
+        dbQuery = dbQuery.gte('created_at', filterDate.toISOString())
+    }
+
+    // 4. Apply Pagination
+    const { data: meetings, error, count } = await dbQuery.range(from, to)
 
     if (error) {
         console.error("Error fetching meetings:", error)
@@ -31,29 +83,29 @@ export default async function MeetingsPage() {
             {/* Header */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between shrink-0">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground">All Meetings</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">All Meetings</h1>
                     <p className="text-muted-foreground mt-1">
-                        {meetings?.length || 0} sessions recorded
+                        {count || 0} sessions recorded
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <div className="relative w-full md:w-64">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            type="search"
-                            placeholder="Snapshot search..."
-                            className="pl-9 h-10 bg-background border-border"
-                        />
-                    </div>
-                    <Button variant="outline" className="h-10 border-border bg-card hover:bg-accent text-foreground">
-                        <Filter className="mr-2 h-4 w-4" /> Filter
-                    </Button>
+                <div className="flex items-center gap-2">
+                    <SearchInput placeholder="Search meetings..." />
+
+                    <AdvancedSearchToggle>
+                        <DateFilter />
+                    </AdvancedSearchToggle>
+
                     <Link href="/dashboard/new">
-                        <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 h-10">
-                            <Plus className="mr-2 h-4 w-4" /> New Meeting
+                        <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 h-9 text-sm px-4">
+                            <Plus className="mr-2 h-4 w-4" /> New
                         </Button>
                     </Link>
                 </div>
+            </div>
+
+            {/* Folders Section */}
+            <div className="shrink-0">
+                <FolderList />
             </div>
 
             {/* Content - Scrollable Table */}
@@ -83,17 +135,32 @@ export default async function MeetingsPage() {
                                                 <Upload className="h-6 w-6 text-muted-foreground/50" />
                                             </div>
                                             <p>No meetings found.</p>
-                                            <p className="text-xs text-muted-foreground/70">Start recording to see sessions here.</p>
-                                            <Link href="/dashboard/new" className="mt-4">
-                                                <Button variant="outline">
-                                                    Record Meeting
-                                                </Button>
-                                            </Link>
+                                            <p className="text-xs text-muted-foreground/70">
+                                                {query ? "Try adjusting your search terms." : "Start recording to see sessions here."}
+                                            </p>
+                                            {!query && (
+                                                <Link href="/dashboard/new" className="mt-4">
+                                                    <Button variant="outline">
+                                                        Record Meeting
+                                                    </Button>
+                                                </Link>
+                                            )}
                                         </td>
                                     </TableRow>
                                 )}
                             </TableBody>
                         </Table>
+                    </div>
+
+                    {/* Pagination Footer */}
+                    <div className="shrink-0 border-t border-border bg-muted/10 p-3 text-xs text-muted-foreground flex items-center justify-between px-6">
+                        <span>Showing <strong>{from + 1}</strong> to <strong>{Math.min(to + 1, count || 0)}</strong> of <strong>{count || 0}</strong> results</span>
+
+                        <PaginationControls
+                            totalCount={count || 0}
+                            currentPage={currentPage}
+                            pageSize={ITEMS_PER_PAGE}
+                        />
                     </div>
                 </div>
             </div>

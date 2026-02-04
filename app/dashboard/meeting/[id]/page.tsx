@@ -25,7 +25,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ id: st
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold">{meeting.title}</h1>
                 <div className="flex gap-2">
-                    <ExportButtons meetingId={meeting.id} />
+                    <ExportButtons />
                 </div>
             </div>
 
