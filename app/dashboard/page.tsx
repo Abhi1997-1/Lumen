@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { MetricsCards } from '@/components/dashboard/metrics-cards'
 import { MeetingRow } from '@/components/dashboard/meeting-row'
 import { Button } from '@/components/ui/button'
-import { Plus, Upload, Bot, Search, Bell } from 'lucide-react'
+import { Plus, Upload, Bot, Search, Bell, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { redirect } from 'next/navigation'
@@ -22,6 +22,7 @@ export default async function DashboardPage() {
         .select('*, status, duration, participants')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
+        .limit(5)
 
     const { data: userSettings } = await supabase
         .from('user_settings')
@@ -59,7 +60,6 @@ export default async function DashboardPage() {
                                 className="pl-9 h-10 bg-background border-border"
                             />
                         </div>
-                        <ModeToggle />
                         <ModeToggle />
                         {/* Import Link button removed */}
                         <Link href="/dashboard/new">
@@ -108,8 +108,16 @@ export default async function DashboardPage() {
 
             {/* Meeting List Table - Flexible Height */}
             <div className="flex-1 min-h-0 flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold tracking-tight">Meetings Overview</h2>
+                <div className="flex items-center justify-between mb-4 px-1">
+                    <Link href="/dashboard/meetings" className="group flex items-center gap-2 hover:opacity-80 transition-opacity">
+                        <h2 className="text-xl font-bold tracking-tight">Meetings Overview</h2>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </Link>
+                    <Link href="/dashboard/meetings">
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
+                            View All
+                        </Button>
+                    </Link>
                 </div>
                 <div className="flex-1 flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden">
                     <div className="flex-1 overflow-auto custom-scrollbar">
