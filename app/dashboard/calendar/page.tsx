@@ -116,7 +116,6 @@ export default function CalendarPage() {
     const sidebarMeetings = meetings.filter(m => isSameDay(m.date, selectedDate))
 
     return (
-    return (
         <div className="flex flex-col h-full gap-6 p-6 lg:p-8 max-w-[1600px] mx-auto w-full overflow-hidden">
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-background text-foreground rounded-xl border border-border shadow-sm">
                 <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
