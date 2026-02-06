@@ -5,7 +5,7 @@ import { ArrowLeft, PlayCircle, FileText, Sparkles } from "lucide-react"
 
 export default function GettingStartedPage() {
     return (
-        <div className="space-y-6 max-w-4xl">
+        <div className="flex flex-col gap-6 p-6 lg:p-8 max-w-4xl mx-auto w-full">
             <div className="flex items-center gap-4 mb-8">
                 <Link href="/dashboard/help">
                     <Button variant="ghost" size="icon">

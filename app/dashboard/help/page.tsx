@@ -5,7 +5,7 @@ import Link from "next/link"
 
 export default function HelpPage() {
     return (
-        <div className="space-y-6 max-w-4xl">
+        <div className="flex flex-col gap-6 p-6 lg:p-8 max-w-4xl mx-auto w-full">
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Help & Support</h1>
 
             <div className="grid gap-6 md:grid-cols-2">
