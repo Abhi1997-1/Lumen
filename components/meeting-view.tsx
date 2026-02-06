@@ -442,7 +442,7 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                                         <Sparkles className="h-4 w-4 text-indigo-400 animate-pulse" />
                                         AI Executive Summary
                                     </h3>
-                                    <p className="text-foreground leading-relaxed text-lg font-light">
+                                    <p className={`text-foreground leading-relaxed font-light transition-all duration-300 ${textSize === 'text-sm' ? 'text-sm' : textSize === 'text-base' ? 'text-base' : 'text-lg'}`}>
                                         {currentMeeting.summary}
                                     </p>
                                 </div>

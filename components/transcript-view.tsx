@@ -23,12 +23,14 @@ export function TranscriptView({ originalTranscript, searchTerm = "" }: Transcri
     // Helper to highlight text
     const highlightText = (text: string) => {
         if (!searchTerm) return text;
-        const parts = text.split(new RegExp(`(${searchTerm})`, 'gi'));
+        // Escape special regex characters
+        const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const parts = text.split(new RegExp(`(${escapedTerm})`, 'gi'));
         return (
             <span>
                 {parts.map((part, i) =>
                     part.toLowerCase() === searchTerm.toLowerCase() ? (
-                        <span key={i} className="bg-yellow-200 dark:bg-yellow-900/50 text-foreground font-medium px-0.5 rounded">{part}</span>
+                        <span key={i} className="bg-yellow-200 dark:bg-yellow-900/80 text-foreground font-bold px-0.5 rounded shadow-sm ring-1 ring-yellow-500/50">{part}</span>
                     ) : (
                         part
                     )
