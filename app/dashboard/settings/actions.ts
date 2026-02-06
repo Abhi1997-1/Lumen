@@ -6,8 +6,11 @@ import { revalidatePath } from "next/cache"
 
 export async function getSettings() {
     const supabase = await createClient()
-    // Mock user for development
-    const user = { id: '11111111-1111-1111-1111-111111111111' }
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { hasKey: false }
+    }
 
     const { data } = await supabase
         .from('user_settings')
@@ -23,8 +26,11 @@ export async function getSettings() {
 
 export async function saveSettings(formData: FormData) {
     const supabase = await createClient()
-    // Mock user for development
-    const user = { id: '11111111-1111-1111-1111-111111111111' }
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        throw new Error("Not authenticated")
+    }
 
     const apiKey = formData.get('gemini_api_key') as string
     if (!apiKey) return

@@ -72,33 +72,37 @@ export default async function DashboardPage() {
 
                 {/* Unlock Intelligence Banner */}
                 {showApiKeyBanner && (
-                    <div className="relative overflow-hidden rounded-xl border border-border bg-gradient-to-r from-slate-900 to-slate-950 p-6 shadow-md dark:shadow-slate-900/50">
+                    <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-sm">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between relative z-10">
                             <div className="flex gap-4">
-                                <div className="h-12 w-12 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0 border border-indigo-500/20">
-                                    <Bot className="h-6 w-6 text-indigo-400" />
+                                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+                                    <Bot className="h-6 w-6 text-primary" />
                                 </div>
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2">
-                                        <h3 className="font-semibold text-white">Connect Your API Key</h3>
-                                        <div className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] font-medium text-yellow-500 border border-yellow-500/20">
+                                        <h3 className="font-semibold text-foreground">Connect Your API Key</h3>
+                                        <div className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] font-medium text-yellow-600 dark:text-yellow-500 border border-yellow-500/20">
                                             SETUP REQUIRED
                                         </div>
                                     </div>
-                                    <p className="text-sm text-slate-400 max-w-xl">
+                                    <p className="text-sm text-muted-foreground max-w-xl">
                                         To enable AI features like auto-summarization and action items, you need to connect your Gemini API key in settings.
+                                        <br />
+                                        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1 mt-1">
+                                            Get your key from Google AI Studio
+                                        </a>
                                     </p>
                                 </div>
                             </div>
                             <Link href="/dashboard/settings">
-                                <Button className="bg-indigo-600 hover:bg-indigo-500 text-white border-0 shadow-lg shadow-indigo-500/25 shrink-0">
+                                <Button className="shadow-lg shadow-primary/20 shrink-0">
                                     Connect API Key
                                 </Button>
                             </Link>
                         </div>
                         {/* Decorative background elements */}
-                        <div className="absolute top-0 right-0 -mt-16 -mr-16 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
-                        <div className="absolute bottom-0 left-0 -mb-16 -ml-16 h-64 w-64 rounded-full bg-blue-500/5 blur-3xl" />
+                        <div className="absolute top-0 right-0 -mt-16 -mr-16 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
+                        <div className="absolute bottom-0 left-0 -mb-16 -ml-16 h-64 w-64 rounded-full bg-primary/5 blur-3xl opacity-50" />
                     </div>
                 )}
 

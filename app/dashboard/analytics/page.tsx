@@ -43,13 +43,6 @@ export default function AnalyticsPage() {
     const [timeRange, setTimeRange] = useState<'7D' | '30D' | 'ALL'>('7D')
 
     // Pagination State
-    // We handle pagination internally here because the props for PaginationControls usually expect URL params, 
-    // but here we are filtering client-side for the table. 
-    // However, looking at the PaginationControls component, it reads from URL. 
-    // Let's stick to URL-based pagination for consistency if possible, or just manage state locally.
-    // If we use URL, we need to pass searchParams. 
-    // The previous implementation of PaginationControls reads `page` param.
-    // So let's sync local page with URL page.
     const currentPage = Number(searchParams.get('page')) || 1
 
     const [stats, setStats] = useState({
@@ -171,7 +164,7 @@ export default function AnalyticsPage() {
     }
 
     if (loading) {
-        return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin text-zinc-500" /></div>
+        return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
     }
 
     return (
@@ -182,15 +175,15 @@ export default function AnalyticsPage() {
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
-                            <h1 className="text-3xl font-bold tracking-tight text-white mb-1">Usage & Token Analytics</h1>
-                            <p className="text-zinc-400">Track your Gemini API consumption and cost savings.</p>
+                            <h1 className="text-3xl font-bold tracking-tight text-foreground mb-1">Usage & Token Analytics</h1>
+                            <p className="text-muted-foreground">Track your Gemini API consumption and cost savings.</p>
                         </div>
-                        <div className="flex bg-[#1F2128] rounded-lg p-1">
+                        <div className="flex bg-muted rounded-lg p-1">
                             <Button
                                 variant={timeRange === '7D' ? 'default' : 'ghost'}
                                 onClick={() => setTimeRange('7D')}
                                 size="sm"
-                                className={`h-8 text-xs ${timeRange === '7D' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-400 hover:text-white'}`}
+                                className={`h-8 text-xs ${timeRange === '7D' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                             >
                                 Last 7 Days
                             </Button>
@@ -198,7 +191,7 @@ export default function AnalyticsPage() {
                                 variant={timeRange === '30D' ? 'default' : 'ghost'}
                                 onClick={() => setTimeRange('30D')}
                                 size="sm"
-                                className={`h-8 text-xs ${timeRange === '30D' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-400 hover:text-white'}`}
+                                className={`h-8 text-xs ${timeRange === '30D' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                             >
                                 Last 30 Days
                             </Button>
@@ -206,7 +199,7 @@ export default function AnalyticsPage() {
                                 variant={timeRange === 'ALL' ? 'default' : 'ghost'}
                                 onClick={() => setTimeRange('ALL')}
                                 size="sm"
-                                className={`h-8 text-xs ${timeRange === 'ALL' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-400 hover:text-white'}`}
+                                className={`h-8 text-xs ${timeRange === 'ALL' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                             >
                                 All Time
                             </Button>
@@ -215,56 +208,56 @@ export default function AnalyticsPage() {
 
                     {/* KPI Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <Card className="bg-[#14161B] border-[#1F2128]">
+                        <Card className="bg-card border-border">
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium text-zinc-400">Meetings Processed</CardTitle>
-                                <div className="h-8 w-8 rounded-lg bg-[#1F2128] flex items-center justify-center">
+                                <CardTitle className="text-sm font-medium text-muted-foreground">Meetings Processed</CardTitle>
+                                <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
                                     <Users className="h-4 w-4 text-blue-500" />
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-3xl font-bold text-white mb-2">{stats.totalMeetings}</div>
+                                <div className="text-3xl font-bold text-foreground mb-2">{stats.totalMeetings}</div>
                                 <div className="flex items-center gap-2 text-xs">
                                     <span className="flex items-center text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">
                                         <TrendingUp className="h-3 w-3 mr-1" /> 12%
                                     </span>
-                                    <span className="text-zinc-500">vs last month</span>
+                                    <span className="text-muted-foreground">vs last month</span>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-[#14161B] border-[#1F2128]">
+                        <Card className="bg-card border-border">
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium text-zinc-400">Hours Transcribed</CardTitle>
-                                <div className="h-8 w-8 rounded-lg bg-[#1F2128] flex items-center justify-center">
+                                <CardTitle className="text-sm font-medium text-muted-foreground">Hours Transcribed</CardTitle>
+                                <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
                                     <Clock className="h-4 w-4 text-indigo-500" />
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-3xl font-bold text-white mb-2">{stats.totalHours.toFixed(1)}h</div>
+                                <div className="text-3xl font-bold text-foreground mb-2">{stats.totalHours.toFixed(1)}h</div>
                                 <div className="flex items-center gap-2 text-xs">
                                     <span className="flex items-center text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">
                                         <TrendingUp className="h-3 w-3 mr-1" /> 5%
                                     </span>
-                                    <span className="text-zinc-500">vs last month</span>
+                                    <span className="text-muted-foreground">vs last month</span>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-[#14161B] border-[#1F2128]">
+                        <Card className="bg-card border-border">
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium text-zinc-400">Total Tokens</CardTitle>
-                                <div className="h-8 w-8 rounded-lg bg-[#1F2128] flex items-center justify-center">
+                                <CardTitle className="text-sm font-medium text-muted-foreground">Total Tokens</CardTitle>
+                                <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
                                     <Box className="h-4 w-4 text-purple-500" />
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-3xl font-bold text-white mb-2">{formatTokens(stats.totalTokens)}</div>
+                                <div className="text-3xl font-bold text-foreground mb-2">{formatTokens(stats.totalTokens)}</div>
                                 <div className="flex items-center gap-2 text-xs">
                                     <span className="flex items-center text-yellow-500 bg-yellow-500/10 px-1.5 py-0.5 rounded">
                                         <TrendingUp className="h-3 w-3 mr-1" /> 8%
                                     </span>
-                                    <span className="text-zinc-500">vs last month</span>
+                                    <span className="text-muted-foreground">vs last month</span>
                                 </div>
                             </CardContent>
                         </Card>
@@ -273,9 +266,9 @@ export default function AnalyticsPage() {
                     {/* Main Chart Section */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Token Usage History Chart */}
-                        <Card className="lg:col-span-2 bg-[#14161B] border-[#1F2128]">
+                        <Card className="lg:col-span-2 bg-card border-border">
                             <CardHeader className="flex flex-row items-center justify-between">
-                                <CardTitle className="text-lg font-semibold text-white">Token Usage History</CardTitle>
+                                <CardTitle className="text-lg font-semibold text-foreground">Token Usage History</CardTitle>
                                 <Button variant="ghost" size="sm" className="text-blue-500 hover:text-blue-400 h-8 gap-2">
                                     <Download className="h-3 w-3" /> Export Data
                                 </Button>
@@ -290,23 +283,23 @@ export default function AnalyticsPage() {
                                                     <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                                                 </linearGradient>
                                             </defs>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                                             <XAxis
                                                 dataKey="name"
                                                 axisLine={false}
                                                 tickLine={false}
-                                                tick={{ fill: '#71717a', fontSize: 12 }}
+                                                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
                                                 dy={10}
                                             />
                                             <YAxis
                                                 axisLine={false}
                                                 tickLine={false}
-                                                tick={{ fill: '#71717a', fontSize: 12 }}
+                                                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
                                                 tickFormatter={(value) => formatTokens(value as number)}
                                             />
                                             <Tooltip
-                                                contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', color: '#fff' }}
-                                                itemStyle={{ color: '#fff' }}
+                                                contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--popover-foreground))', borderRadius: 'var(--radius)' }}
+                                                itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
                                                 formatter={(value) => [formatTokens(value as number), 'Tokens']}
                                             />
                                             <Area
@@ -324,27 +317,27 @@ export default function AnalyticsPage() {
                         </Card>
 
                         {/* Cost Savings Card */}
-                        <Card className="bg-[#14161B] border-[#1F2128] relative overflow-hidden">
+                        <Card className="bg-card border-border relative overflow-hidden">
                             {/* Background Decoration */}
-                            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-900/20 via-transparent to-transparent opacity-50" />
+                            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent opacity-50" />
 
                             <CardHeader>
                                 <div className="h-10 w-10 rounded-full bg-emerald-500/20 flex items-center justify-center mb-4">
                                     <PiggyBank className="h-5 w-5 text-emerald-500" />
                                 </div>
-                                <CardTitle className="text-lg font-semibold text-white">Cost Savings</CardTitle>
-                                <p className="text-sm text-zinc-400 mt-2">
+                                <CardTitle className="text-lg font-semibold text-foreground">Cost Savings</CardTitle>
+                                <p className="text-sm text-muted-foreground mt-2">
                                     You&apos;ve saved <span className="text-emerald-500 font-bold">${stats.savings.toFixed(2)}</span> this month compared to a standard premium plan.
                                 </p>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-center justify-between">
-                                    <span className="text-sm text-zinc-300">Your API Cost</span>
-                                    <span className="text-lg font-bold text-white">${stats.estCost.toFixed(2)}</span>
+                                    <span className="text-sm text-muted-foreground">Your API Cost</span>
+                                    <span className="text-lg font-bold text-foreground">${stats.estCost.toFixed(2)}</span>
                                 </div>
-                                <div className="rounded-lg border border-[#27272a] bg-[#1F2128] p-4 flex items-center justify-between opacity-75">
-                                    <span className="text-sm text-zinc-400">Competitor Premium</span>
-                                    <span className="text-lg font-bold text-zinc-400 line-through decoration-zinc-500 decoration-2">${(stats.totalMeetings * 10).toFixed(2)}</span>
+                                <div className="rounded-lg border border-border bg-muted p-4 flex items-center justify-between opacity-75">
+                                    <span className="text-sm text-muted-foreground">Competitor Premium</span>
+                                    <span className="text-lg font-bold text-muted-foreground line-through decoration-muted-foreground decoration-2">${(stats.totalMeetings * 10).toFixed(2)}</span>
                                 </div>
 
                                 <Button className="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 text-white border-0 shadow-lg shadow-emerald-500/20">
@@ -355,14 +348,14 @@ export default function AnalyticsPage() {
                     </div>
 
                     {/* Recent Processed Meetings Table */}
-                    <Card className="bg-[#14161B] border-[#1F2128]">
+                    <Card className="bg-card border-border">
                         <CardHeader className="pb-0">
-                            <CardTitle className="text-lg font-semibold text-white">Recent Processed Meetings</CardTitle>
+                            <CardTitle className="text-lg font-semibold text-foreground">Recent Processed Meetings</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0 mt-4">
                             <div className="overflow-x-auto min-h-[300px]">
                                 <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-zinc-500 uppercase bg-[#1A1D24] border-y border-[#1F2128]">
+                                    <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-y border-border">
                                         <tr>
                                             <th className="px-6 py-3 font-medium">Date</th>
                                             <th className="px-6 py-3 font-medium">Meeting Name</th>
@@ -371,23 +364,23 @@ export default function AnalyticsPage() {
                                             <th className="px-6 py-3 font-medium text-right">Est. Cost</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-[#1F2128]">
+                                    <tbody className="divide-y divide-border">
                                         {currentTableData.map((meeting, i) => (
                                             <tr
                                                 key={i}
                                                 onClick={() => router.push(`/dashboard/${meeting.id}`)}
-                                                className="hover:bg-[#1A1D24]/50 transition-colors cursor-pointer group"
+                                                className="hover:bg-muted/50 transition-colors cursor-pointer group"
                                             >
-                                                <td className="px-6 py-4 font-medium text-white">{meeting.formattedDate}</td>
+                                                <td className="px-6 py-4 font-medium text-foreground">{meeting.formattedDate}</td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-2">
                                                         <div className={`h-2 w-2 rounded-full bg-blue-500`} />
-                                                        <span className="text-zinc-300 group-hover:text-blue-400 transition-colors">{meeting.title}</span>
+                                                        <span className="text-muted-foreground group-hover:text-blue-500 transition-colors">{meeting.title}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 text-zinc-400">{meeting.durationStr}</td>
+                                                <td className="px-6 py-4 text-muted-foreground">{meeting.durationStr}</td>
                                                 <td className="px-6 py-4">
-                                                    <Badge variant="secondary" className="bg-[#1F2128] text-indigo-400 border-0">
+                                                    <Badge variant="secondary" className="bg-muted text-indigo-500 border-0">
                                                         {formatTokens(meeting.tokens)}
                                                     </Badge>
                                                 </td>
@@ -399,13 +392,13 @@ export default function AnalyticsPage() {
                             </div>
 
                             {/* Pagination Controls */}
-                            <div className="p-4 border-t border-[#1F2128] flex flex-col items-center">
+                            <div className="p-4 border-t border-border flex flex-col items-center">
                                 <PaginationControls
                                     totalCount={meetings.length}
                                     currentPage={currentPage}
                                     pageSize={ITEMS_PER_PAGE}
                                 />
-                                <div className="text-center mt-2 text-xs text-zinc-500">
+                                <div className="text-center mt-2 text-xs text-muted-foreground">
                                     Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, meetings.length)} of {meetings.length} results
                                 </div>
                             </div>

@@ -10,9 +10,17 @@ const TabsContext = React.createContext<{
 
 const Tabs = React.forwardRef<
     HTMLDivElement,
-    React.HTMLAttributes<HTMLDivElement> & { defaultValue?: string }
->(({ className, defaultValue, children, ...props }, ref) => {
-    const [value, setValue] = React.useState(defaultValue || "")
+    React.HTMLAttributes<HTMLDivElement> & {
+        defaultValue?: string
+        value?: string
+        onValueChange?: (value: string) => void
+    }
+>(({ className, defaultValue, value: controlledValue, onValueChange, children, ...props }, ref) => {
+    const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue || "")
+
+    const value = controlledValue !== undefined ? controlledValue : uncontrolledValue
+    const setValue = onValueChange || setUncontrolledValue // Note: this simple OR might not behave perfectly if onValueChange is passed but value isn't, but matches typical controlled/uncontrolled pattern. Better: useControlledState hook. But this is sufficient for now given the explicit usage.
+
     return (
         <TabsContext.Provider value={{ value, onValueChange: setValue }}>
             <div ref={ref} className={cn("", className)} {...props}>

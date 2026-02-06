@@ -178,14 +178,14 @@ export default function NewMeetingPage() {
                                 <Input
                                     id="file"
                                     type="file"
-                                    accept="audio/*"
+                                    accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.webm,.aac"
                                     onChange={(e) => setFile(e.target.files?.[0] || null)}
                                     className="cursor-pointer"
                                     disabled={loading}
                                 />
                             </div>
                             <p className="text-xs text-muted-foreground flex justify-between">
-                                <span>Supported: MP3, WAV, M4A</span>
+                                <span>Supported: MP3, WAV, M4A, FLAC, OGG, WEBM, AAC</span>
                                 {file && <span>Size: {(file.size / 1024 / 1024).toFixed(2)} MB</span>}
                             </p>
 
