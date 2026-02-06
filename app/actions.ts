@@ -82,6 +82,36 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
     return { success: true, meetingId: meeting.id }
 }
 
+export async function retryProcessing(meetingId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Not authenticated" }
+
+    const { data: meeting } = await supabase.from('meetings').select('audio_url').eq('id', meetingId).single();
+    if (!meeting) return { success: false, error: "Meeting not found" };
+
+    // Reset status to processing
+    await supabase.from('meetings').update({ status: 'processing', transcript: '', summary: '' }).eq('id', meetingId);
+
+    // Trigger Gemini
+    processMeetingWithGemini(user.id, meeting.audio_url)
+        .then(async (result) => {
+            await supabase.from('meetings').update({
+                transcript: result.transcript,
+                summary: result.summary,
+                action_items: result.action_items,
+                status: 'completed'
+            }).eq('id', meetingId);
+        })
+        .catch(async (e) => {
+            console.error("Retry failed:", e);
+            await supabase.from('meetings').update({ status: 'failed' }).eq('id', meetingId);
+        });
+
+    revalidatePath(`/dashboard/${meetingId}`);
+    return { success: true };
+}
+
 export async function updateMeetingActionItems(meetingId: string, items: string[]) {
     const supabase = await createClient()
     const { error } = await supabase

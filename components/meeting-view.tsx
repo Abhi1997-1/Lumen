@@ -124,7 +124,7 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
             const regex = /Speaker \d+:/g;
             const found = currentMeeting.transcript.match(regex) || [];
             // distinct
-            const unique = Array.from(new Set(found)).map((s: string) => s.replace(':', ''));
+            const unique = Array.from(new Set(found)).map((s) => (s as string).replace(':', ''));
             setSpeakers(unique);
             // Initialize map
             const initialMap: Record<string, string> = {};
@@ -210,7 +210,8 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
         }
     }, [meeting.transcript, meeting.summary]);
 
-    if (!meeting.transcript && !meeting.summary) {
+    // Show Overlay if processing (and NOT failed)
+    if (meeting.status !== 'failed' && !meeting.transcript && !meeting.summary) {
         return <PremiumProcessingOverlay status="Analyzing Audio..." progress={simulatedProgress} />
     }
 
