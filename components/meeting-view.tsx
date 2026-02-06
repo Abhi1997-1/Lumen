@@ -52,6 +52,14 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { exportMeetingToProvider } from "@/app/actions/export"
+import { updateMeetingTitle, updateMeetingNotes, renameSpeakerInTranscript } from "@/app/actions/meeting-actions"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { useDebounce } from 'use-debounce';
+import { useEffect } from "react"
 
 interface MeetingViewProps {
     meeting: any;
@@ -74,7 +82,68 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
     const [isTranslating, setIsTranslating] = useState(false);
     const [translatedData, setTranslatedData] = useState<any>(null);
 
-    const currentMeeting = translatedData || meeting;
+    // New State for Enhancements
+    const [title, setTitle] = useState(meeting.title || "");
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [notes, setNotes] = useState(meeting.notes || "");
+    const [debouncedNotes] = useDebounce(notes, 1000); // Auto-save notes
+
+    // Text Size: 'text-sm', 'text-base', 'text-lg'
+    const [textSize, setTextSize] = useState("text-base");
+
+    // Speaker Renaming
+    const [isSpeakerModalOpen, setIsSpeakerModalOpen] = useState(false);
+    const [speakers, setSpeakers] = useState<string[]>([]);
+    const [speakerMap, setSpeakerMap] = useState<Record<string, string>>({});
+
+    const currentMeeting = translatedData || { ...meeting, title }; // Use local title
+
+    // Auto-save Notes
+    useEffect(() => {
+        if (debouncedNotes !== meeting.notes) {
+            updateMeetingNotes(meeting.id, debouncedNotes);
+        }
+    }, [debouncedNotes, meeting.id, meeting.notes]);
+
+    const handleTitleSave = async () => {
+        if (title !== meeting.title) {
+            const res = await updateMeetingTitle(meeting.id, title);
+            if (!res.success) toast.error("Failed to update title");
+            else toast.success("Title updated");
+        }
+        setIsEditingTitle(false);
+    }
+
+    // Extract unique speakers when modal opens
+    useEffect(() => {
+        if (isSpeakerModalOpen && currentMeeting.transcript) {
+            const regex = /Speaker \d+:/g;
+            const found = currentMeeting.transcript.match(regex) || [];
+            // distinct
+            const unique = Array.from(new Set(found)).map(s => s.replace(':', ''));
+            setSpeakers(unique);
+            // Initialize map
+            const initialMap: Record<string, string> = {};
+            unique.forEach(s => initialMap[s] = s);
+            setSpeakerMap(initialMap);
+        }
+    }, [isSpeakerModalOpen, currentMeeting.transcript]);
+
+    const handleSpeakerSave = async () => {
+        let transcript = currentMeeting.transcript;
+        for (const [oldName, newName] of Object.entries(speakerMap)) {
+            if (oldName !== newName) {
+                const res = await renameSpeakerInTranscript(meeting.id, transcript, oldName, newName);
+                if (res.success && res.newTranscript) transcript = res.newTranscript;
+            }
+        }
+        setIsSpeakerModalOpen(false);
+        toast.success("Speakers updated");
+        // Force refresh or update local state logic would be needed here deeply, 
+        // but revalidatePath in server action handles the page reload usually, 
+        // OR we should update local translatedData/meeting prop if we want instant feedback without reload.
+        // For now, reliance on revalidatePath.
+    }
 
     const handleLanguageChange = async (newLang: string) => {
         if (newLang === language) return;
@@ -159,6 +228,39 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                     </div>
 
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 mt-6">Quick Actions</p>
+                    <Dialog open={isSpeakerModalOpen} onOpenChange={setIsSpeakerModalOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" className="w-full justify-start h-9 text-sm font-normal text-muted-foreground hover:text-foreground">
+                                <Users className="mr-2 h-4 w-4" /> Manage Speakers
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Manage Speakers</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+                                {speakers.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">No speakers found in transcript.</p>
+                                ) : (
+                                    speakers.map((speaker, idx) => (
+                                        <div key={idx} className="grid grid-cols-4 items-center gap-4">
+                                            <Label className="text-right">{speaker}</Label>
+                                            <div className="col-span-3">
+                                                <Input
+                                                    value={speakerMap[speaker] || speaker}
+                                                    onChange={(e) => setSpeakerMap(prev => ({ ...prev, [speaker]: e.target.value }))}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                            <DialogFooter>
+                                <Button onClick={handleSpeakerSave}>Save Changes</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
                     <Button variant="outline" className="w-full justify-start h-9 text-sm font-normal text-muted-foreground hover:text-foreground">
                         <FileText className="mr-2 h-4 w-4" /> Summarize into key points
                     </Button>
@@ -231,19 +333,72 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-8 lg:px-16 max-w-5xl mx-auto w-full">
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         {/* Header */}
-                        <div>
-                            <h1 className="text-3xl font-bold text-foreground mb-2 leading-tight">
-                                {currentMeeting.title}
-                            </h1>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                <span className="flex items-center gap-1.5">
-                                    <Calendar className="h-3.5 w-3.5" />
-                                    {new Date(currentMeeting.created_at).toLocaleDateString()}
-                                </span>
-                                <span className="flex items-center gap-1.5">
-                                    <Clock className="h-3.5 w-3.5" />
-                                    {new Date(currentMeeting.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
+                        <div className="flex flex-col gap-4">
+                            {isEditingTitle ? (
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        value={title}
+                                        onChange={(e) => setTitle(e.target.value)}
+                                        className="text-3xl font-bold h-12"
+                                        onBlur={handleTitleSave}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
+                                        autoFocus
+                                    />
+                                    <Button size="sm" onClick={handleTitleSave}>Save</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => setIsEditingTitle(false)}>Cancel</Button>
+                                </div>
+                            ) : (
+                                <h1
+                                    onClick={() => setIsEditingTitle(true)}
+                                    className="text-3xl font-bold text-foreground mb-2 leading-tight hover:bg-accent/50 p-1 -ml-1 rounded cursor-pointer transition-colors border border-transparent hover:border-border"
+                                    title="Click to edit title"
+                                >
+                                    {title}
+                                </h1>
+                            )}
+
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                    <span className="flex items-center gap-1.5">
+                                        <Calendar className="h-3.5 w-3.5" />
+                                        {new Date(currentMeeting.created_at).toLocaleDateString()}
+                                    </span>
+                                    <span className="flex items-center gap-1.5">
+                                        <Clock className="h-3.5 w-3.5" />
+                                        {new Date(currentMeeting.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                </div>
+
+                                {/* Text Size Controls */}
+                                <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg border border-border">
+                                    <Button
+                                        variant={textSize === 'text-sm' ? 'secondary' : 'ghost'}
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={() => setTextSize('text-sm')}
+                                        title="Small Text"
+                                    >
+                                        <span className="text-xs">A</span>
+                                    </Button>
+                                    <Button
+                                        variant={textSize === 'text-base' ? 'secondary' : 'ghost'}
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={() => setTextSize('text-base')}
+                                        title="Medium Text"
+                                    >
+                                        <span className="text-sm">A</span>
+                                    </Button>
+                                    <Button
+                                        variant={textSize === 'text-lg' ? 'secondary' : 'ghost'}
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={() => setTextSize('text-lg')}
+                                        title="Large Text"
+                                    >
+                                        <span className="text-lg">A</span>
+                                    </Button>
+                                </div>
                             </div>
                         </div>
 
@@ -265,7 +420,10 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
 
 
                         {/* Transcript Section - NOW INTERACTIVE */}
-                        <TranscriptView originalTranscript={currentMeeting.transcript || ''} />
+                        {/* Transcript Section - NOW INTERACTIVE */}
+                        <div className={textSize}>
+                            <TranscriptView originalTranscript={currentMeeting.transcript || ''} />
+                        </div>
 
                     </div>
                 </div>
@@ -274,42 +432,64 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
             {/* Chat Bar */}
             <AiChatBar context={`Meeting Title: ${currentMeeting.title}\n\nSummary:\n${currentMeeting.summary}\n\nTranscript:\n${currentMeeting.transcript}`} />
 
-            {/* RIGHT COLUMN: Action Items Sidebar (Hidden on tablets) */}
+            {/* RIGHT COLUMN: Action Items & Notes Sidebar */}
             <div className="hidden lg:flex w-[350px] border-l border-border/40 bg-card/30 flex-col shrink-0">
-                <div className="p-4 border-b border-border/40 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <CheckSquare className="h-5 w-5 text-emerald-500" />
-                        <h2 className="font-semibold text-lg tracking-tight">Action Items</h2>
+                <Tabs defaultValue="actions" className="flex flex-col h-full">
+                    <div className="p-4 border-b border-border/40 flex items-center justify-between">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="actions">Action Items</TabsTrigger>
+                            <TabsTrigger value="notes">Notes</TabsTrigger>
+                        </TabsList>
                     </div>
-                    <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 border-0 font-medium">
-                        {currentMeeting.action_items?.length || 0} Open
-                    </Badge>
-                </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                    {currentMeeting.action_items && currentMeeting.action_items.map((item: any, idx: number) => (
-                        <div key={idx} className="p-4 rounded-xl border border-white/5 bg-card hover:border-indigo-500/30 hover:bg-accent/50 transition-all group shadow-sm hover:shadow-md">
-                            <div className="flex items-start gap-4">
-                                <Checkbox className="mt-1.5 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 border-zinc-700" />
-                                <div className="flex-1 space-y-2">
-                                    <p className="text-sm text-foreground leading-relaxed font-medium">{typeof item === 'string' ? item : item.text}</p>
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <Avatar className="h-6 w-6 border border-border">
-                                                <AvatarFallback className="text-[9px] bg-indigo-500/20 text-indigo-300">AI</AvatarFallback>
-                                            </Avatar>
-                                            <span className="text-[11px] text-muted-foreground">Suggested Action</span>
+                    <TabsContent value="actions" className="flex-1 overflow-y-auto p-4 space-y-3 m-0 data-[state=inactive]:hidden">
+                        <div className="flex items-center justify-between mb-2">
+                            <h2 className="font-semibold text-sm tracking-tight text-muted-foreground">Detected Items</h2>
+                            <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 border-0 font-medium text-xs">
+                                {currentMeeting.action_items?.length || 0} Open
+                            </Badge>
+                        </div>
+
+                        {currentMeeting.action_items && currentMeeting.action_items.map((item: any, idx: number) => (
+                            <div key={idx} className="p-4 rounded-xl border border-white/5 bg-card hover:border-indigo-500/30 hover:bg-accent/50 transition-all group shadow-sm hover:shadow-md">
+                                <div className="flex items-start gap-4">
+                                    <Checkbox className="mt-1.5 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 border-zinc-700" />
+                                    <div className="flex-1 space-y-2">
+                                        <p className="text-sm text-foreground leading-relaxed font-medium">{typeof item === 'string' ? item : item.text}</p>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Avatar className="h-6 w-6 border border-border">
+                                                    <AvatarFallback className="text-[9px] bg-indigo-500/20 text-indigo-300">AI</AvatarFallback>
+                                                </Avatar>
+                                                <span className="text-[11px] text-muted-foreground">Suggested Action</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
 
-                    <Button variant="ghost" className="w-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:bg-accent hover:border-border h-10 mt-2">
-                        <PlusIcon className="mr-2 h-4 w-4" /> Add Action Item
-                    </Button>
-                </div>
+                        <Button variant="ghost" className="w-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:bg-accent hover:border-border h-10 mt-2">
+                            <PlusIcon className="mr-2 h-4 w-4" /> Add Action Item
+                        </Button>
+                    </TabsContent>
+
+                    <TabsContent value="notes" className="flex-1 flex flex-col p-4 m-0 data-[state=inactive]:hidden h-full">
+                        <div className="flex flex-col h-full gap-2">
+                            <Label htmlFor="meeting-notes" className="sr-only">Meeting Notes</Label>
+                            <Textarea
+                                id="meeting-notes"
+                                placeholder="Type your personal notes here..."
+                                className="flex-1 resize-none bg-card/50 border-white/10 focus-visible:ring-indigo-500/50 p-4 leading-relaxed"
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                            />
+                            <p className="text-[10px] text-muted-foreground text-right">
+                                {debouncedNotes === meeting.notes ? "Saved" : "Saving..."}
+                            </p>
+                        </div>
+                    </TabsContent>
+                </Tabs>
 
                 <div className="p-4 border-t border-border/40 bg-background">
                     <div className="flex gap-2">
