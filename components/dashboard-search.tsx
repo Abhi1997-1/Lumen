@@ -9,12 +9,12 @@ import { useEffect, useState } from "react"
 export function DashboardSearch() {
     const router = useRouter()
     const searchParams = useSearchParams()
-    const [query, setQuery] = useState(searchParams.get('search') || "")
+    const [query, setQuery] = useState(searchParams.get('query') || "")
     const [debouncedQuery] = useDebounce(query, 500)
 
     useEffect(() => {
         if (debouncedQuery) {
-            router.push(`/dashboard/meetings?search=${encodeURIComponent(debouncedQuery)}`)
+            router.push(`/dashboard/meetings?query=${encodeURIComponent(debouncedQuery)}`)
         } else if (query === "" && debouncedQuery === "") {
             // If expressly cleared, maybe go back to default? 
             // But be careful not to trigger loops.
@@ -24,7 +24,7 @@ export function DashboardSearch() {
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
-            router.push(`/dashboard/meetings?search=${encodeURIComponent(query)}`)
+            router.push(`/dashboard/meetings?query=${encodeURIComponent(query)}`)
         }
     }
 
