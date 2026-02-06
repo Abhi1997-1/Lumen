@@ -292,13 +292,30 @@ export async function transcribeChunkAction(formData: FormData) {
 
     try {
         const file = formData.get('audio') as File;
+        const language = formData.get('language') as string || 'English';
+
         if (!file) return { success: false, text: "" };
 
         const buffer = Buffer.from(await file.arrayBuffer());
         const { transcribeAudioChunkGemini } = await import('@/lib/gemini/service');
 
-        const text = await transcribeAudioChunkGemini(user.id, buffer, file.type || 'audio/webm');
-        return { success: true, text };
+        // Parallel: Get Original AND Translation if language is not English
+        // But for low latency, maybe just get the requested one? 
+        // User asked for "save original and translated". 
+        // Real-time: Displaying both live is expensive (2 calls). 
+        // Let's maximize value: If Lang != English, get Translation. Original audio is saved anyway.
+        // Wait, user said "we see it live as well" (both).
+
+        const tasks = [transcribeAudioChunkGemini(user.id, buffer, file.type || 'audio/webm', 'English')];
+        if (language !== 'English') {
+            tasks.push(transcribeAudioChunkGemini(user.id, buffer, file.type || 'audio/webm', language));
+        }
+
+        const results = await Promise.all(tasks);
+        const originalText = results[0];
+        const translatedText = results.length > 1 ? results[1] : null;
+
+        return { success: true, text: originalText, translatedText };
     } catch (error) {
         console.error("Chunk action error:", error);
         return { success: false, text: "" };

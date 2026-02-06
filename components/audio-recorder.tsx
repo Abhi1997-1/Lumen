@@ -3,24 +3,37 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Mic, Square, Trash2, StopCircle, Play, Pause, Sparkles } from "lucide-react"
+import { Mic, Square, Trash2, Globe, Sparkles } from "lucide-react"
 import { transcribeChunkAction } from "@/app/actions"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 
 interface AudioRecorderProps {
     onRecordingComplete: (file: File) => void;
 }
 
+const SUPPORTED_LANGUAGES = [
+    "English", "Spanish", "French", "German", "Chinese", "Japanese", "Hindi", "Portuguese"
+]
+
 export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     const [isRecording, setIsRecording] = useState(false)
     const [duration, setDuration] = useState(0)
     const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
-    const [isPaused, setIsPaused] = useState(false)
     const [liveTranscript, setLiveTranscript] = useState("")
+    const [liveTranslation, setLiveTranslation] = useState("")
+    const [targetLanguage, setTargetLanguage] = useState("English")
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null)
     const timerRef = useRef<NodeJS.Timeout | null>(null)
     const chunksRef = useRef<Blob[]>([])
     const transcriptRef = useRef<HTMLDivElement>(null)
+    const translationRef = useRef<HTMLDivElement>(null)
 
     // Visualizer refs
     const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -31,41 +44,48 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
 
     useEffect(() => {
         return () => {
-            if (timerRef.current) clearInterval(timerRef.current)
-            if (animationRef.current) cancelAnimationFrame(animationRef.current)
-            if (audioContextRef.current) audioContextRef.current.close()
+            cleanupAudio();
         }
     }, [])
 
-    // Auto-scroll transcript
-    useEffect(() => {
-        if (transcriptRef.current) {
-            transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
+    const cleanupAudio = () => {
+        if (timerRef.current) clearInterval(timerRef.current)
+        if (animationRef.current) cancelAnimationFrame(animationRef.current)
+        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+            audioContextRef.current.close()
+            audioContextRef.current = null;
         }
-    }, [liveTranscript])
+    }
+
+    // Auto-scroll
+    useEffect(() => {
+        if (transcriptRef.current) transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
+        if (translationRef.current) translationRef.current.scrollTop = translationRef.current.scrollHeight;
+    }, [liveTranscript, liveTranslation])
 
     const startRecording = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' }) // Ensure MIME type
+            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
             mediaRecorderRef.current = mediaRecorder
             chunksRef.current = []
             setLiveTranscript("")
+            setLiveTranslation("")
 
             mediaRecorder.ondataavailable = async (e) => {
                 if (e.data.size > 0) {
                     chunksRef.current.push(e.data)
 
-                    // Live Transcription: Send chunk to Gemini
-                    // We send the single chunk, not the whole blob so far, to avoid re-transcribing history
                     const chunkBlob = new Blob([e.data], { type: 'audio/webm' });
                     const formData = new FormData();
                     formData.append('audio', chunkBlob);
+                    formData.append('language', targetLanguage);
 
                     try {
                         const result = await transcribeChunkAction(formData);
-                        if (result.success && result.text) {
-                            setLiveTranscript(prev => prev + " " + result.text);
+                        if (result.success) {
+                            if (result.text) setLiveTranscript(prev => prev + " " + result.text);
+                            if (result.translatedText) setLiveTranslation(prev => prev + " " + result.translatedText);
                         }
                     } catch (err) {
                         console.error("Live transcribe error", err);
@@ -76,26 +96,21 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
             mediaRecorder.onstop = () => {
                 const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
                 setAudioBlob(blob)
-                stopVisualizer()
-
-                // Stop all tracks
+                cleanupAudio(); // Stop visualizer
                 stream.getTracks().forEach(track => track.stop())
             }
 
-            // Start with 5 second timeslice for chunks
+            // 5s slices for live transcription
             mediaRecorder.start(5000)
 
             setIsRecording(true)
-            setIsPaused(false)
             setDuration(0)
             setAudioBlob(null)
 
-            // Start Timer
             timerRef.current = setInterval(() => {
                 setDuration(prev => prev + 1)
             }, 1000)
 
-            // Start Visualizer
             startVisualizer(stream)
 
         } catch (err) {
@@ -108,7 +123,6 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         if (mediaRecorderRef.current && isRecording) {
             mediaRecorderRef.current.stop()
             setIsRecording(false)
-            setIsPaused(false)
             if (timerRef.current) clearInterval(timerRef.current)
         }
     }
@@ -119,6 +133,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         setDuration(0)
         chunksRef.current = []
         setLiveTranscript("")
+        setLiveTranslation("")
     }
 
     const startVisualizer = (stream: MediaStream) => {
@@ -142,30 +157,36 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
             animationRef.current = requestAnimationFrame(draw)
             analyser.getByteFrequencyData(dataArray)
 
-            ctx.fillStyle = 'rgb(0, 0, 0)' // Or transparent clear
             ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-            const barWidth = (canvas.width / bufferLength) * 2.5
-            let barHeight
-            let x = 0
+            // Nice looking waveform
+            const width = canvas.width;
+            const height = canvas.height;
+            const barWidth = (width / bufferLength) * 2.5;
+            let x = 0;
 
             for (let i = 0; i < bufferLength; i++) {
-                barHeight = dataArray[i] / 2
+                const v = dataArray[i] / 255.0; // Normalized 0-1
+                const barHeight = v * height * 0.8;
 
-                // Gradient or simple color
-                ctx.fillStyle = `rgb(${barHeight + 100}, 50, 255)`
-                ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight)
+                const r = 100 + (v * 155);
+                const g = 50 + (v * 50);
+                const b = 255;
 
-                x += barWidth + 1
+                ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${v + 0.2})`;
+                // Centered bars
+                const y = (height - barHeight) / 2;
+
+                // Rounded caps look nice
+                ctx.beginPath();
+                ctx.roundRect(x, y, barWidth - 1, barHeight, 5);
+                ctx.fill();
+
+                x += barWidth + 1;
             }
         }
 
         draw()
-    }
-
-    const stopVisualizer = () => {
-        if (animationRef.current) cancelAnimationFrame(animationRef.current)
-        if (audioContextRef.current) audioContextRef.current.close()
     }
 
     const formatTime = (seconds: number) => {
@@ -181,43 +202,52 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         }
     }
 
+    const isSplitView = targetLanguage !== 'English';
+
     return (
-        <div className="flex flex-col gap-4 w-full">
-            <Card className="w-full h-[400px] flex flex-col items-center justify-center bg-zinc-950 border-zinc-800 relative overflow-hidden shrink-0">
-                {/* Background Visualizer Canvas */}
+        <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500">
+            {/* Visualizer & Controls Card */}
+            <Card className="w-full relative overflow-hidden bg-zinc-950 border-zinc-800 shadow-2xl">
+                {/* Visualizer Canvas Background */}
                 <canvas
                     ref={canvasRef}
-                    className="absolute inset-0 w-full h-full opacity-30 pointer-events-none"
-                    width={600}
+                    className="absolute inset-0 w-full h-full opacity-40 pointer-events-none"
+                    width={800}
                     height={400}
                 />
 
-                <div className="z-10 flex flex-col items-center gap-8 w-full max-w-md p-6">
-                    {/* Timer Display */}
-                    <div className="text-6xl font-mono font-bold tracking-widest text-white tabular-nums drop-shadow-lg">
+                <CardContent className="relative z-10 flex flex-col items-center justify-center p-10 min-h-[350px] gap-8">
+
+                    {/* Timer */}
+                    <div className="text-7xl font-mono font-bold tracking-widest text-white tabular-nums drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
                         {formatTime(duration)}
                     </div>
 
-                    {/* Status Text */}
-                    <div className="text-zinc-400 text-sm font-medium uppercase tracking-wider flex items-center gap-2">
-                        {isRecording ? (
-                            <>
-                                <span className="relative flex h-3 w-3">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                                </span>
-                                Listening & Transcribing...
-                            </>
-                        ) : audioBlob ? "Recording Complete" : "Ready to Record"}
-                    </div>
+                    {/* Language Selector */}
+                    {!isRecording && !audioBlob && (
+                        <div className="flex items-center gap-3 bg-zinc-900/80 p-1.5 pl-3 rounded-full border border-zinc-700">
+                            <Globe className="h-4 w-4 text-zinc-400" />
+                            <span className="text-xs text-zinc-400 font-medium mr-1">Translate to:</span>
+                            <Select value={targetLanguage} onValueChange={setTargetLanguage}>
+                                <SelectTrigger className="h-7 w-[120px] border-none bg-transparent hover:bg-zinc-800/50 text-white text-xs rounded-full focus:ring-0">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {SUPPORTED_LANGUAGES.map(lang => (
+                                        <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
 
                     {/* Controls */}
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-8">
                         {!isRecording && !audioBlob && (
                             <Button
                                 size="lg"
                                 onClick={startRecording}
-                                className="h-20 w-20 rounded-full bg-red-600 hover:bg-red-700 shadow-[0_0_30px_rgba(220,38,38,0.4)] border-4 border-zinc-900 transition-transform hover:scale-105"
+                                className="h-20 w-20 rounded-full bg-red-600 hover:bg-red-500 shadow-[0_0_40px_rgba(220,38,38,0.5)] border-4 border-zinc-800 transition-all hover:scale-110 active:scale-95"
                             >
                                 <Mic className="h-8 w-8 text-white" />
                             </Button>
@@ -227,55 +257,67 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
                             <Button
                                 size="lg"
                                 onClick={stopRecording}
-                                className="h-20 w-20 rounded-full bg-zinc-100 hover:bg-white shadow-[0_0_30px_rgba(255,255,255,0.2)] border-4 border-zinc-900 animate-pulse transition-transform hover:scale-105"
+                                className="h-20 w-20 rounded-full bg-zinc-200 hover:bg-white shadow-[0_0_40px_rgba(255,255,255,0.3)] border-4 border-zinc-800 animate-pulse transition-all hover:scale-105"
                             >
                                 <Square className="h-8 w-8 text-black fill-black" />
                             </Button>
                         )}
 
                         {audioBlob && !isRecording && (
-                            <div className="flex gap-4 animate-in zoom-in slide-in-from-bottom-5 duration-300">
+                            <div className="flex gap-4 animate-in slide-in-from-bottom-4 fade-in">
                                 <Button
                                     variant="outline"
                                     size="icon"
                                     onClick={cancelRecording}
-                                    className="h-14 w-14 rounded-full border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-red-500 hover:border-red-500/50"
+                                    className="h-14 w-14 rounded-full border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-red-500 hover:border-red-500/50 hover:bg-zinc-900"
                                 >
                                     <Trash2 className="h-6 w-6" />
                                 </Button>
 
                                 <Button
                                     onClick={handleSave}
-                                    className="h-14 px-8 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-lg shadow-lg shadow-emerald-900/50"
+                                    className="h-14 px-8 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-lg shadow-lg shadow-indigo-900/50 border border-indigo-400/20"
                                 >
                                     Process Recording
                                 </Button>
                             </div>
                         )}
                     </div>
-                </div>
-            </Card>
 
-            {/* Live Transcript Box */}
-            <Card className="w-full bg-zinc-900/50 border-zinc-800 animate-in fade-in slide-in-from-bottom-5 duration-500 max-h-[200px] overflow-hidden flex flex-col">
-                <CardContent className="p-4 overflow-y-auto font-mono text-sm text-zinc-300 leading-relaxed space-y-2" ref={transcriptRef}>
-                    {liveTranscript ? (
-                        <>
-                            <div className="flex items-center gap-2 text-indigo-400 text-xs uppercase font-bold tracking-wider mb-2 sticky top-0 bg-zinc-900/90 py-1 backdrop-blur-sm">
-                                <Sparkles className="h-3 w-3" /> Gemini Live Preview
-                            </div>
-                            <p className="whitespace-pre-wrap">{liveTranscript}</p>
-                            {isRecording && (
-                                <span className="inline-block w-2 h-4 bg-indigo-500 animate-pulse align-middle ml-1" />
-                            )}
-                        </>
-                    ) : (
-                        <p className="text-zinc-600 italic text-center py-4">
-                            {isRecording ? "Listening for speech..." : "Transcript preview will appear here..."}
-                        </p>
-                    )}
+                    <div className="text-zinc-500 text-xs font-medium uppercase tracking-[0.2em]">
+                        {isRecording ? "Listening & Transcribing" : audioBlob ? "Recording Paused" : "Tap to Speak"}
+                    </div>
                 </CardContent>
             </Card>
+
+            {/* Live Transcript Area */}
+            {(liveTranscript || isRecording) && (
+                <div className={`grid gap-4 ${isSplitView ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                    {/* Original */}
+                    <Card className="bg-zinc-900/50 border-zinc-800 max-h-[300px] flex flex-col overflow-hidden">
+                        <div className="p-2 border-b border-zinc-800 bg-zinc-900/80 backdrop-blur text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center justify-between sticky top-0">
+                            <span>Original Audio</span>
+                            {isRecording && <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />}
+                        </div>
+                        <CardContent className="p-4 overflow-y-auto font-mono text-sm text-zinc-300 leading-relaxed" ref={transcriptRef}>
+                            {liveTranscript || <span className="text-zinc-600 italic">Waiting...</span>}
+                        </CardContent>
+                    </Card>
+
+                    {/* Translation */}
+                    {isSplitView && (
+                        <Card className="bg-indigo-950/20 border-indigo-500/20 max-h-[300px] flex flex-col overflow-hidden">
+                            <div className="p-2 border-b border-indigo-500/20 bg-indigo-950/30 backdrop-blur text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-2 sticky top-0">
+                                <Sparkles className="h-3 w-3" />
+                                <span>{targetLanguage} Translation</span>
+                            </div>
+                            <CardContent className="p-4 overflow-y-auto font-mono text-sm text-indigo-200 leading-relaxed" ref={translationRef}>
+                                {liveTranslation || <span className="text-indigo-500/50 italic">Translating...</span>}
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
+            )}
         </div>
     )
 }

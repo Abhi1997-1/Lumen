@@ -17,8 +17,15 @@ import { ProcessingOverlay } from '@/components/ui/processing-overlay'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AudioRecorder } from "@/components/audio-recorder"
 
+import { useSearchParams } from 'next/navigation'
+
+// ...
+
 export default function NewMeetingPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const defaultTab = searchParams.get('tab') || 'upload'
+
     const [loading, setLoading] = useState(false)
     const [title, setTitle] = useState('')
     const [file, setFile] = useState<File | null>(null)
@@ -180,7 +187,7 @@ export default function NewMeetingPage() {
                 />
             </div>
 
-            <Tabs defaultValue="upload" className="w-full">
+            <Tabs defaultValue={defaultTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-6 h-12">
                     <TabsTrigger value="upload" disabled={loading}>Upload File</TabsTrigger>
                     <TabsTrigger value="record" disabled={loading}>Record Audio</TabsTrigger>
@@ -243,9 +250,15 @@ export default function NewMeetingPage() {
                 </TabsContent>
             </Tabs>
 
-            {/* Progress UI Overhead */}
+            {/* Minimal Loading Indicator */}
             {loading && (
-                <ProcessingOverlay status={statusText || (compressing ? 'Compressing...' : 'Uploading...')} progress={compressing ? progress : (statusText.includes('Uploading') ? 50 : 90)} />
+                <div className="fixed bottom-6 right-6 z-50 bg-card border border-border shadow-xl rounded-lg p-4 flex items-center gap-4 animate-in slide-in-from-bottom-5">
+                    <RefreshCw className="h-5 w-5 text-indigo-500 animate-spin" />
+                    <div className="flex flex-col">
+                        <span className="font-semibold text-sm">{statusText || "Processing..."}</span>
+                        <span className="text-xs text-muted-foreground">{compressing ? `${progress}% Compressed` : "Please wait"}</span>
+                    </div>
+                </div>
             )}
         </div>
     )

@@ -266,11 +266,15 @@ export async function processFolderChat(userId: string, folderId: string, questi
     }
 }
 
-export async function transcribeAudioChunkGemini(userId: string, audioBuffer: Buffer, mimeType: string) {
+export async function transcribeAudioChunkGemini(userId: string, audioBuffer: Buffer, mimeType: string, targetLanguage?: string) {
     try {
         const model = await getGeminiModel(userId);
 
-        const prompt = "Transcribe the following audio chunk accurately. Return ONLY the verbatim text. Do not add any conversational filler.";
+        let prompt = "Transcribe the following audio chunk accurately. Return ONLY the verbatim text.";
+
+        if (targetLanguage && targetLanguage !== 'English') {
+            prompt = `Transcribe the audio and IMMEDIATELY translate it to ${targetLanguage}. Return ONLY the ${targetLanguage} translation. Do not include the original text.`;
+        }
 
         const result = await model.generateContent([
             {
@@ -285,7 +289,6 @@ export async function transcribeAudioChunkGemini(userId: string, audioBuffer: Bu
         return result.response.text();
     } catch (error) {
         console.error("Chunk transcription error:", error);
-        // Fail silently or return empty string for live stream glitches
         return "";
     }
 }
