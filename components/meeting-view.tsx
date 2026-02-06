@@ -437,11 +437,11 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
 
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                    <span className="flex items-center gap-1.5">
+                                    <span className="flex items-center gap-1.5" suppressHydrationWarning>
                                         <Calendar className="h-3.5 w-3.5" />
                                         {new Date(currentMeeting.created_at).toLocaleDateString()}
                                     </span>
-                                    <span className="flex items-center gap-1.5">
+                                    <span className="flex items-center gap-1.5" suppressHydrationWarning>
                                         <Clock className="h-3.5 w-3.5" />
                                         {new Date(currentMeeting.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>
