@@ -173,3 +173,58 @@ function StageItem({ icon: Icon, label, subLabel, state }: { icon: any, label: s
         </div>
     )
 }
+
+function LivePreviewLog() {
+    const [lines, setLines] = React.useState<string[]>([])
+    const messages = [
+        "Initializing audio stream...",
+        "Detecting speaker voice signature...",
+        "Identifying background noise floor...",
+        "Speaker 1: Welcome everyone to the meeting.",
+        "Speaker 1: Today we are discussing Q3 goals.",
+        "Processing harmonic frequencies...",
+        "Speaker 2: I have the data ready to present.",
+        "Analyzing sentiment patterns...",
+        "Speaker 1: Excellent. Let's start with the sales figures.",
+        "Transcribing segment 442-A...",
+        "Speaker 2: Sales are up 15% quarter over quarter.",
+        "Generating semantic summary...",
+        "Speaker 3: That exceeds our projections.",
+        "Optimizing for clarity...",
+        "Speaker 1: Great work team. Let's keep this momentum.",
+    ]
+
+    React.useEffect(() => {
+        let index = 0;
+        const interval = setInterval(() => {
+            if (index < messages.length) {
+                setLines(prev => [...prev, messages[index]].slice(-8)) // Keep last 8 lines
+                index++;
+            } else {
+                // simple loop for demo
+                index = 0;
+            }
+        }, 1200); // New line every 1.2s
+
+        return () => clearInterval(interval);
+    }, [])
+
+    return (
+        <div className="flex-1 p-6 space-y-4 overflow-hidden relative font-mono text-xs text-muted-foreground">
+            {lines.map((line, i) => (
+                <div key={i} className="animate-in slide-in-from-bottom-2 fade-in duration-500">
+                    <span className="text-indigo-400 mr-2">{">"}</span>
+                    {line}
+                </div>
+            ))}
+
+            <div className="animate-pulse flex items-center gap-2 text-indigo-500">
+                <span className="h-2 w-2 bg-indigo-500 rounded-full" />
+                Processing...
+            </div>
+
+            {/* Fade out bottom */}
+            <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-card to-transparent pointer-events-none" />
+        </div>
+    )
+}
