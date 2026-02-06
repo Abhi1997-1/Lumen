@@ -422,7 +422,7 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                                             toast.success("Retry started", { id: toastId });
                                             router.refresh();
                                         } else {
-                                            toast.error("Retry failed", { id: toastId });
+                                            toast.error(res.error || "Retry failed", { id: toastId });
                                         }
                                     }}
                                 >
