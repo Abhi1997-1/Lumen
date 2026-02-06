@@ -404,7 +404,9 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                             <div>
                                 <h3 className="font-semibold text-sm">Processing Issue</h3>
                                 <p className="text-xs opacity-90">
-                                    {meeting.status === 'failed' ? "Processing failed. Please try re-uploading." : "Transcription missing. The audio may be corrupt or too short."}
+                                    {meeting.status === 'failed'
+                                        ? (meeting.summary?.startsWith("Processing Error:") ? meeting.summary : "Processing failed. Please try re-uploading.")
+                                        : "Transcription missing. The audio may be corrupt or too short."}
                                 </p>
                             </div>
                             <div className="ml-auto">
