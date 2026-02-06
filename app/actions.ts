@@ -112,6 +112,12 @@ export async function retryProcessing(meetingId: string) {
     return { success: true };
 }
 
+export async function getMeetingStatus(meetingId: string) {
+    const supabase = await createClient()
+    const { data: meeting } = await supabase.from('meetings').select('status, transcript, summary').eq('id', meetingId).single()
+    return meeting ? { status: meeting.status, hasTranscript: !!meeting.transcript } : null
+}
+
 export async function updateMeetingActionItems(meetingId: string, items: string[]) {
     const supabase = await createClient()
     const { error } = await supabase

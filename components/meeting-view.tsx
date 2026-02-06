@@ -197,6 +197,7 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
 
     // Simulate progress for the overlay since we don't have real-time socket updates yet
     const [simulatedProgress, setSimulatedProgress] = useState(10);
+    const [dismissedProcessing, setDismissedProcessing] = useState(false);
 
     useEffect(() => {
         if (!meeting.transcript && !meeting.summary) {
@@ -210,9 +211,29 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
         }
     }, [meeting.transcript, meeting.summary]);
 
-    // Show Overlay if processing (and NOT failed)
-    if (meeting.status !== 'failed' && !meeting.transcript && !meeting.summary) {
-        return <PremiumProcessingOverlay status="Analyzing Audio..." progress={simulatedProgress} />
+    // Poll for status updates if processing
+    useEffect(() => {
+        if (meeting.status === 'processing' && !meeting.transcript) {
+            const pollInterval = setInterval(async () => {
+                const { getMeetingStatus } = await import("@/app/actions");
+                const status = await getMeetingStatus(meeting.id);
+                if (status && (status.status === 'failed' || status.status === 'completed')) {
+                    router.refresh(); // Refresh to show error or result
+                }
+            }, 3000);
+            return () => clearInterval(pollInterval);
+        }
+    }, [meeting.id, meeting.status, meeting.transcript, router]);
+
+    // Show Overlay if processing (and NOT failed, and NOT dismissed)
+    if (meeting.status !== 'failed' && !meeting.transcript && !meeting.summary && !dismissedProcessing) {
+        return (
+            <PremiumProcessingOverlay
+                status="Analyzing Audio..."
+                progress={simulatedProgress}
+                onCancel={() => setDismissedProcessing(true)}
+            />
+        )
     }
 
     return (
