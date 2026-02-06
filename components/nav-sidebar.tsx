@@ -31,34 +31,45 @@ interface NavSidebarProps {
     user: any
     collapsed: boolean
     onToggle: () => void
+    isMobile?: boolean
+    onMobileClose?: () => void
 }
 
-export function NavSidebar({ user, collapsed, onToggle }: NavSidebarProps) {
+export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobileClose }: NavSidebarProps) {
     const pathname = usePathname()
+
+    const handleLinkClick = () => {
+        if (isMobile && onMobileClose) {
+            onMobileClose()
+        }
+    }
 
     return (
         <div
             className={cn(
-                "flex h-full flex-col gap-4 bg-[hsl(var(--sidebar-bg))] border-r border-[hsl(var(--sidebar-border))] transition-all duration-300 ease-in-out shrink-0",
-                collapsed ? "w-[60px]" : "w-[240px]"
+                "flex h-full flex-col gap-4 bg-[hsl(var(--sidebar-bg))] transition-all duration-300 ease-in-out shrink-0",
+                !isMobile && "border-r border-[hsl(var(--sidebar-border))]",
+                collapsed ? "w-[60px]" : "w-full lg:w-[240px]"
             )}
         >
             <div className="flex h-14 items-center px-4 lg:h-[60px] shrink-0">
                 <div className="flex items-center w-full">
                     {!collapsed && (
-                        <Link href="/" className="flex items-center gap-2 font-semibold overflow-hidden whitespace-nowrap">
+                        <Link href="/" className="flex items-center gap-2 font-semibold overflow-hidden whitespace-nowrap" onClick={handleLinkClick}>
                             <Mic className="h-6 w-6 text-primary" />
                             <span className="text-lg font-bold text-foreground">Lumen</span>
                         </Link>
                     )}
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={onToggle}
-                        className={cn("text-muted-foreground hover:text-foreground ml-auto", collapsed && "mx-auto")}
-                    >
-                        {collapsed ? <Menu className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-                    </Button>
+                    {!isMobile && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={onToggle}
+                            className={cn("text-muted-foreground hover:text-foreground ml-auto", collapsed && "mx-auto")}
+                        >
+                            {collapsed ? <Menu className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -69,6 +80,7 @@ export function NavSidebar({ user, collapsed, onToggle }: NavSidebarProps) {
                         <Link
                             key={item.href}
                             href={item.href}
+                            onClick={handleLinkClick}
                             className={cn(
                                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 group relative",
                                 pathname === item.href
@@ -96,6 +108,7 @@ export function NavSidebar({ user, collapsed, onToggle }: NavSidebarProps) {
                         <Link
                             key={item.href}
                             href={item.href}
+                            onClick={handleLinkClick}
                             className={cn(
                                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 group relative",
                                 pathname === item.href

@@ -1,14 +1,14 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { GoogleAIFileManager } from "@google/generative-ai/server";
 import { decrypt } from "@/lib/crypto";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
 export async function processMeetingWithGemini(userId: string, storagePath: string) {
     // 1. Get User Key
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { data: settings } = await supabase.from('user_settings').select('gemini_api_key').eq('user_id', userId).single();
 
     let apiKey = '';
@@ -103,7 +103,7 @@ export async function processMeetingWithGemini(userId: string, storagePath: stri
 
 // Helper to get authorized model
 async function getGeminiModel(userId: string) {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { data: settings } = await supabase.from('user_settings').select('gemini_api_key').eq('user_id', userId).single();
 
     let apiKey = '';
