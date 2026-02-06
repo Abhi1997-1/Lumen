@@ -105,7 +105,7 @@ export function MeetingList({ meetings, query }: MeetingListProps) {
 
             {/* Floating Action Bar */}
             <div className={cn(
-                "absolute bottom-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-sm py-2 px-4 rounded-full shadow-xl flex items-center gap-4 transition-all duration-300 z-50",
+                "fixed bottom-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-sm py-2 px-4 rounded-full shadow-xl flex items-center gap-4 transition-all duration-300 z-50",
                 selectedIds.length > 0 ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0 pointer-events-none"
             )}>
                 <span className="font-semibold px-2 border-r border-background/20">
