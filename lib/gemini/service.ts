@@ -260,7 +260,7 @@ export async function processFolderChat(userId: string, folderId: string, questi
         const result = await model.generateContent(fullContext);
         return result.response.text();
 
-        // ... existing code ...
+    } catch (error) {
         console.error("Folder chat error:", error);
         throw new Error("Failed to generate answer for folder.");
     }

@@ -61,6 +61,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useDebounce } from 'use-debounce';
 import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 
 interface MeetingViewProps {
     meeting: any;
@@ -79,6 +80,7 @@ const LANGUAGES = [
 ];
 
 export function MeetingView({ meeting, user }: MeetingViewProps) {
+    const router = useRouter()
     const [language, setLanguage] = useState("English");
     const [isTranslating, setIsTranslating] = useState(false);
     const [translatedData, setTranslatedData] = useState<any>(null);
@@ -325,9 +327,32 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                             </SelectContent>
                         </Select>
 
-                        <Badge variant="outline" className="border-indigo-500/20 text-indigo-400 bg-indigo-500/10 ml-2">
-                            Processed
-                        </Badge>
+                        {translatedData ? (
+                            <Button
+                                size="sm"
+                                className="ml-2 h-8 text-xs bg-indigo-600 hover:bg-indigo-500 text-white border-0"
+                                onClick={async () => {
+                                    const { saveTranslatedMeeting } = await import('@/app/actions');
+                                    const toastId = toast.loading("Saving translation...");
+                                    const res = await saveTranslatedMeeting(meeting.id, translatedData);
+                                    if (res.success) {
+                                        toast.success("Translation saved permanently!", { id: toastId });
+                                        router.refresh();
+                                        setTranslatedData(null); // Reset since it's now the 'current'
+                                        setLanguage("English"); // Reset selector visually or keep as is? User might want to know it's Spanish now.
+                                        // Actually, if we overwrite, the 'original' is now Spanish.
+                                    } else {
+                                        toast.error("Failed to save", { id: toastId });
+                                    }
+                                }}
+                            >
+                                Save Translation
+                            </Button>
+                        ) : (
+                            <Badge variant="outline" className="border-indigo-500/20 text-indigo-400 bg-indigo-500/10 ml-2">
+                                Processed
+                            </Badge>
+                        )}
                     </div>
                 </div>
 
