@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { redirect } from 'next/navigation'
 import { ModeToggle } from "@/components/theme-toggle"
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DashboardSearch } from '@/components/dashboard-search'
 
 export default async function DashboardPage() {
     const supabase = await createClient()
@@ -52,14 +53,7 @@ export default async function DashboardPage() {
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="relative w-full md:w-64 mr-2">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                type="search"
-                                placeholder="Search transcripts..."
-                                className="pl-9 h-10 bg-background border-border"
-                            />
-                        </div>
+                        <DashboardSearch />
                         <ModeToggle />
 
                         <div className="flex items-center gap-2">

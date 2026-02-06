@@ -32,7 +32,8 @@ import {
     Link as LinkIcon,
     Languages,
     Loader2,
-    ArrowLeft
+    ArrowLeft,
+    Search
 } from 'lucide-react'
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -90,6 +91,7 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
 
     // Text Size: 'text-sm', 'text-base', 'text-lg'
     const [textSize, setTextSize] = useState("text-base");
+    const [transcriptSearch, setTranscriptSearch] = useState("");
 
     // Speaker Renaming
     const [isSpeakerModalOpen, setIsSpeakerModalOpen] = useState(false);
@@ -120,11 +122,11 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
             const regex = /Speaker \d+:/g;
             const found = currentMeeting.transcript.match(regex) || [];
             // distinct
-            const unique = Array.from(new Set(found)).map(s => s.replace(':', ''));
+            const unique = Array.from(new Set(found)).map((s: string) => s.replace(':', ''));
             setSpeakers(unique);
             // Initialize map
             const initialMap: Record<string, string> = {};
-            unique.forEach(s => initialMap[s] = s);
+            unique.forEach((s: string) => initialMap[s] = s);
             setSpeakerMap(initialMap);
         }
     }, [isSpeakerModalOpen, currentMeeting.transcript]);
@@ -331,6 +333,21 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
 
                 {/* Document Canvas */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-8 lg:px-16 max-w-5xl mx-auto w-full">
+                    {/* Stuck Processing / Error Handling */}
+                    {(meeting.status === 'failed' || (!meeting.transcript && meeting.status === 'completed')) && (
+                        <div className="mb-8 p-4 rounded-lg border border-red-500/20 bg-red-500/10 text-red-500 flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+                                <span className="font-bold">!</span>
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-sm">Processing Issue</h3>
+                                <p className="text-xs opacity-90">
+                                    {meeting.status === 'failed' ? "Processing failed. Please try re-uploading." : "Transcription missing. The audio may be corrupt or too short."}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         {/* Header */}
                         <div className="flex flex-col gap-4">
@@ -369,35 +386,49 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                                     </span>
                                 </div>
 
-                                {/* Text Size Controls */}
-                                <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg border border-border">
-                                    <Button
-                                        variant={textSize === 'text-sm' ? 'secondary' : 'ghost'}
-                                        size="icon"
-                                        className="h-6 w-6"
-                                        onClick={() => setTextSize('text-sm')}
-                                        title="Small Text"
-                                    >
-                                        <span className="text-xs">A</span>
-                                    </Button>
-                                    <Button
-                                        variant={textSize === 'text-base' ? 'secondary' : 'ghost'}
-                                        size="icon"
-                                        className="h-6 w-6"
-                                        onClick={() => setTextSize('text-base')}
-                                        title="Medium Text"
-                                    >
-                                        <span className="text-sm">A</span>
-                                    </Button>
-                                    <Button
-                                        variant={textSize === 'text-lg' ? 'secondary' : 'ghost'}
-                                        size="icon"
-                                        className="h-6 w-6"
-                                        onClick={() => setTextSize('text-lg')}
-                                        title="Large Text"
-                                    >
-                                        <span className="text-lg">A</span>
-                                    </Button>
+                                <div className="flex items-center gap-2">
+                                    {/* Search Input for Transcript */}
+                                    <div className="relative w-48 md:w-64">
+                                        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                                        <Input
+                                            type="search"
+                                            placeholder="Find in transcript..."
+                                            className="pl-8 h-8 text-xs bg-muted/30 border-border"
+                                            value={transcriptSearch}
+                                            onChange={(e) => setTranscriptSearch(e.target.value)}
+                                        />
+                                    </div>
+
+                                    {/* Text Size Controls */}
+                                    <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg border border-border">
+                                        <Button
+                                            variant={textSize === 'text-sm' ? 'secondary' : 'ghost'}
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={() => setTextSize('text-sm')}
+                                            title="Small Text"
+                                        >
+                                            <span className="text-xs">A</span>
+                                        </Button>
+                                        <Button
+                                            variant={textSize === 'text-base' ? 'secondary' : 'ghost'}
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={() => setTextSize('text-base')}
+                                            title="Medium Text"
+                                        >
+                                            <span className="text-sm">A</span>
+                                        </Button>
+                                        <Button
+                                            variant={textSize === 'text-lg' ? 'secondary' : 'ghost'}
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={() => setTextSize('text-lg')}
+                                            title="Large Text"
+                                        >
+                                            <span className="text-lg">A</span>
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -420,9 +451,8 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
 
 
                         {/* Transcript Section - NOW INTERACTIVE */}
-                        {/* Transcript Section - NOW INTERACTIVE */}
                         <div className={textSize}>
-                            <TranscriptView originalTranscript={currentMeeting.transcript || ''} />
+                            <TranscriptView originalTranscript={currentMeeting.transcript || ''} searchTerm={transcriptSearch} />
                         </div>
 
                     </div>
