@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { MeetingRow } from '@/components/dashboard/meeting-row'
+import { MeetingList } from '@/components/dashboard/meeting-list'
 import { FolderList } from '@/components/folders/folder-list'
 import { Button } from '@/components/ui/button'
 import { Plus, Upload } from 'lucide-react'
@@ -110,59 +111,7 @@ export default async function MeetingsPage({
 
             {/* Content - Scrollable Table */}
             <div className="flex-1 flex flex-col min-h-0">
-                <div className="flex-1 flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                    <div className="flex-1 overflow-auto custom-scrollbar">
-                        <Table>
-                            <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
-                                <TableRow className="hover:bg-transparent border-b border-border">
-                                    <TableHead className="w-[40%] pl-6">Meeting Name</TableHead>
-                                    <TableHead className="hidden md:table-cell">Date</TableHead>
-                                    <TableHead className="hidden md:table-cell text-right">Duration</TableHead>
-                                    <TableHead className="hidden md:table-cell">Participants</TableHead>
-                                    <TableHead className="hidden md:table-cell">Status</TableHead>
-                                    <TableHead className="text-right pr-6"></TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {meetings && meetings.length > 0 ? (
-                                    meetings.map((meeting) => (
-                                        <MeetingRow key={meeting.id} meeting={meeting} />
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <td colSpan={6} className="h-96 text-center text-muted-foreground text-sm flex flex-col items-center justify-center gap-2">
-                                            <div className="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center mb-2">
-                                                <Upload className="h-6 w-6 text-muted-foreground/50" />
-                                            </div>
-                                            <p>No meetings found.</p>
-                                            <p className="text-xs text-muted-foreground/70">
-                                                {query ? "Try adjusting your search terms." : "Start recording to see sessions here."}
-                                            </p>
-                                            {!query && (
-                                                <Link href="/dashboard/new" className="mt-4">
-                                                    <Button variant="outline">
-                                                        Record Meeting
-                                                    </Button>
-                                                </Link>
-                                            )}
-                                        </td>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-
-                    {/* Pagination Footer */}
-                    <div className="shrink-0 border-t border-border bg-muted/10 p-3 text-xs text-muted-foreground flex items-center justify-between px-6">
-                        <span>Showing <strong>{from + 1}</strong> to <strong>{Math.min(to + 1, count || 0)}</strong> of <strong>{count || 0}</strong> results</span>
-
-                        <PaginationControls
-                            totalCount={count || 0}
-                            currentPage={currentPage}
-                            pageSize={ITEMS_PER_PAGE}
-                        />
-                    </div>
-                </div>
+                <MeetingList meetings={meetings || []} query={query} />
             </div>
         </div>
     )

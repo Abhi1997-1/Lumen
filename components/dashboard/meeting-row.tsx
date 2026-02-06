@@ -16,6 +16,8 @@ import { MoveToFolderDialog } from "@/components/folders/move-to-folder-dialog"
 import { DeleteMeetingDialog } from "@/components/dashboard/delete-meeting-dialog"
 import { useState } from "react"
 
+import { Checkbox } from "@/components/ui/checkbox"
+
 interface MeetingRowProps {
     meeting: {
         id: string
@@ -28,12 +30,16 @@ interface MeetingRowProps {
         status: string | null
         folder_id: string | null
     }
+    selectable?: boolean
+    checked?: boolean
+    onCheckedChange?: (checked: boolean) => void
 }
 
-export function MeetingRow({ meeting }: MeetingRowProps) {
+export function MeetingRow({ meeting, selectable, checked, onCheckedChange }: MeetingRowProps) {
     const status = meeting.status || (meeting.transcript ? "completed" : "processing")
 
-    // Status config
+    // ... (keep existing statusConfig and currentStatus logic)
+
     const statusConfig = {
         completed: { label: "Completed", color: "text-emerald-500 border-emerald-500/30 bg-emerald-500/10", dot: "bg-emerald-500" },
         processing: { label: "Processing", color: "text-blue-500 border-blue-500/30 bg-blue-500/10 animate-pulse", dot: "bg-blue-500" },
@@ -42,14 +48,13 @@ export function MeetingRow({ meeting }: MeetingRowProps) {
 
     const currentStatus = statusConfig[status as keyof typeof statusConfig] || statusConfig.processing
 
-    // Using formattedDate for consistency
+    // ... (keep formattedDate and duration)
     const formattedDate = new Date(meeting.created_at).toLocaleDateString(undefined, {
         month: 'short',
         day: 'numeric',
         year: 'numeric'
     })
 
-    // Format Duration
     const formatDuration = (seconds: number) => {
         if (!seconds) return "--"
         const m = Math.floor(seconds / 60)
@@ -58,7 +63,7 @@ export function MeetingRow({ meeting }: MeetingRowProps) {
     }
     const duration = formatDuration(meeting.duration || 0)
 
-    // Participants
+    // ... (keep participants)
     const participants = meeting.participants || []
     const displayParticipants = participants.slice(0, 3)
     const extraCount = Math.max(0, participants.length - 3)
@@ -67,9 +72,23 @@ export function MeetingRow({ meeting }: MeetingRowProps) {
 
     return (
         <>
-            <TableRow className="group hover:bg-muted/50 transition-colors cursor-pointer">
+            <TableRow
+                className={`group hover:bg-muted/50 transition-colors cursor-pointer ${checked ? 'bg-muted/50' : ''}`}
+            >
+                {/* Cell 0: Checkbox (Conditional) */}
+                {selectable && (
+                    <TableCell className="w-[40px] pl-4 pr-0">
+                        <Checkbox
+                            checked={checked}
+                            onCheckedChange={onCheckedChange}
+                            onClick={(e) => e.stopPropagation()}
+                            className="translate-y-[2px]"
+                        />
+                    </TableCell>
+                )}
+
                 {/* Cell 1: Name and Icon */}
-                <TableCell>
+                <TableCell className={selectable ? "pl-4" : "pl-6"}>
                     <div className="flex items-center gap-4">
                         <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                             <span className="text-primary font-bold text-lg">
