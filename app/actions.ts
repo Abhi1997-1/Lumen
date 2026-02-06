@@ -260,3 +260,23 @@ export async function upgradeTier(newTier: 'pro' | 'unlimited') {
     revalidatePath('/dashboard')
     return { success: true }
 }
+
+export async function transcribeChunkAction(formData: FormData) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, text: "" }
+
+    try {
+        const file = formData.get('audio') as File;
+        if (!file) return { success: false, text: "" };
+
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const { transcribeAudioChunkGemini } = await import('@/lib/gemini/service');
+
+        const text = await transcribeAudioChunkGemini(user.id, buffer, file.type || 'audio/webm');
+        return { success: true, text };
+    } catch (error) {
+        console.error("Chunk action error:", error);
+        return { success: false, text: "" };
+    }
+}

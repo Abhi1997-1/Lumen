@@ -260,8 +260,32 @@ export async function processFolderChat(userId: string, folderId: string, questi
         const result = await model.generateContent(fullContext);
         return result.response.text();
 
-    } catch (error) {
+        // ... existing code ...
         console.error("Folder chat error:", error);
         throw new Error("Failed to generate answer for folder.");
+    }
+}
+
+export async function transcribeAudioChunkGemini(userId: string, audioBuffer: Buffer, mimeType: string) {
+    try {
+        const model = await getGeminiModel(userId);
+
+        const prompt = "Transcribe the following audio chunk accurately. Return ONLY the verbatim text. Do not add any conversational filler.";
+
+        const result = await model.generateContent([
+            {
+                inlineData: {
+                    mimeType: mimeType,
+                    data: audioBuffer.toString("base64")
+                }
+            },
+            { text: prompt }
+        ]);
+
+        return result.response.text();
+    } catch (error) {
+        console.error("Chunk transcription error:", error);
+        // Fail silently or return empty string for live stream glitches
+        return "";
     }
 }

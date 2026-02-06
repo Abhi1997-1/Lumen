@@ -133,7 +133,7 @@ export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobi
             </div>
 
 
-            <div className="mt-auto border-t border-[hsl(var(--sidebar-border))] p-2 bg-[hsl(var(--sidebar-bg))]">
+            <div className="mt-4 border-t border-[hsl(var(--sidebar-border))] p-2 bg-[hsl(var(--sidebar-bg))]">
                 {/* Usage Card - Only show when expanded or on mobile */}
                 {(!collapsed && usageData) && (
                     <div className="mb-2 px-2">
