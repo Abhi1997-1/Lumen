@@ -134,8 +134,8 @@ export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobi
 
 
             <div className="mt-4 border-t border-[hsl(var(--sidebar-border))] p-2 bg-[hsl(var(--sidebar-bg))]">
-                {/* Usage Card - Only show when expanded or on mobile */}
-                {(!collapsed && usageData) && (
+                {/* Usage Card - Only show when expanded or on mobile AND NOT UNLIMITED */}
+                {(!collapsed && usageData && usageData.tier !== 'unlimited') && (
                     <div className="mb-2 px-2">
                         <UsageCard usedTokens={usageData.used} limitTokens={usageData.limit} tier={usageData.tier} />
                     </div>
@@ -150,7 +150,9 @@ export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobi
                             {!collapsed && (
                                 <div className="flex flex-col min-w-0 text-left">
                                     <span className="text-sm font-semibold text-foreground truncate">{user?.user_metadata?.full_name || 'User'}</span>
-                                    <span className="text-[10px] text-muted-foreground truncate" title={user.email}>{usageData?.tier === 'pro' ? 'Pro Plan' : 'Free Plan'}</span>
+                                    <span className="text-[10px] text-muted-foreground truncate" title={user.email}>
+                                        {usageData?.tier === 'pro' ? 'Pro Plan' : usageData?.tier === 'unlimited' ? 'Pro Unlimited' : 'Free Plan'}
+                                    </span>
                                 </div>
                             )}
                         </button>
