@@ -1,5 +1,6 @@
 'use client'
 
+import { UsageCard } from "@/components/usage-card"
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -33,9 +34,10 @@ interface NavSidebarProps {
     onToggle: () => void
     isMobile?: boolean
     onMobileClose?: () => void
+    usageData?: { used: number, limit: number, tier: string }
 }
 
-export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobileClose }: NavSidebarProps) {
+export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobileClose, usageData }: NavSidebarProps) {
     const pathname = usePathname()
 
     const handleLinkClick = () => {
@@ -132,6 +134,12 @@ export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobi
 
 
             <div className="mt-auto border-t border-[hsl(var(--sidebar-border))] p-2 bg-[hsl(var(--sidebar-bg))]">
+                {/* Usage Card - Only show when expanded or on mobile */}
+                {(!collapsed && usageData) && (
+                    <div className="mb-2 px-2">
+                        <UsageCard usedTokens={usageData.used} limitTokens={usageData.limit} tier={usageData.tier} />
+                    </div>
+                )}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <div className={cn("flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors cursor-pointer group", collapsed && "justify-center")}>
