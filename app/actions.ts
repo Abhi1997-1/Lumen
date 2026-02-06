@@ -185,3 +185,69 @@ export async function askFolderGemini(folderId: string, question: string) {
         return { success: false, error: error.message }
     }
 }
+
+// --- QUOTA & SUBSCRIPTION ACTIONS ---
+
+export async function getMonthlyUsage() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, used: 0, limit: 0, tier: 'free' }
+
+    // 1. Get User/Tier Settings
+    const { data: settings } = await supabase
+        .from('user_settings')
+        .select('gemini_api_key, tier')
+        .eq('user_id', user.id)
+        .single()
+
+    // Determine Tier & Limit
+    // Defaults: Free = 2M, Pro = 10M
+    const hasCustomKey = !!settings?.gemini_api_key
+    const tier = settings?.tier || 'free' // 'free' | 'pro'
+    let limit = 2_000_000
+    if (tier === 'pro') limit = 10_000_000
+    if (hasCustomKey) limit = -1 // Unlimited
+
+    // 2. Calculate Usage (Sum total_tokens from this month's meetings)
+    // Start of month
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+
+    const { data: meetings, error } = await supabase
+        .from('meetings')
+        .select('total_tokens')
+        .eq('user_id', user.id)
+        .gte('created_at', startOfMonth)
+
+    if (error) {
+        console.error("Error fetching usage:", error)
+        return { success: false, used: 0, limit, tier }
+    }
+
+    const used = meetings.reduce((acc, curr) => acc + (curr.total_tokens || 0), 0)
+
+    return { success: true, used, limit, tier: hasCustomKey ? 'unlimited' : tier }
+}
+
+export async function upgradeTier(newTier: 'pro' | 'unlimited') {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Not authenticated" }
+
+    // For 'unlimited', we rely on them adding a key, so this might just be a UI flag
+    // But for 'pro', we update the DB.
+
+    // Note: In a real app, strict validation of payment would happen here.
+
+    const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+            user_id: user.id,
+            tier: newTier === 'unlimited' ? 'free' : newTier // If unlimited selected, they just need a key, but visually we might treat differently. Let's just store 'pro'.
+        }, { onConflict: 'user_id' })
+
+    if (error) return { success: false, error: error.message }
+
+    revalidatePath('/dashboard')
+    return { success: true }
+}
