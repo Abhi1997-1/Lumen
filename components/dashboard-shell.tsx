@@ -23,7 +23,7 @@ export function DashboardShell({ user, children, usageData }: DashboardShellProp
             {/* Desktop Sidebar - Hidden on mobile */}
             <aside className={cn(
                 "hidden lg:block sticky top-0 h-screen shrink-0 z-40 border-r border-border transition-[width] duration-300",
-                isCollapsed ? "w-[80px]" : "w-[280px]"
+                isCollapsed ? "w-[60px]" : "w-[240px]"
             )}>
                 <NavSidebar
                     user={user}

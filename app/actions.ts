@@ -261,6 +261,30 @@ export async function upgradeTier(newTier: 'pro' | 'unlimited') {
     return { success: true }
 }
 
+export async function updateProfile(formData: FormData) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Not authenticated" }
+
+    const fullName = formData.get('full_name') as string
+    const avatar = formData.get('avatar') as string
+
+    // Update Supabase Auth Metadata (Standard way for simple profile data)
+    const { error } = await supabase.auth.updateUser({
+        data: {
+            full_name: fullName,
+            avatar_url: avatar
+        }
+    })
+
+    if (error) return { success: false, error: error.message }
+
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/settings')
+    return { success: true }
+}
+
+
 export async function transcribeChunkAction(formData: FormData) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
