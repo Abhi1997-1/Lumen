@@ -356,7 +356,7 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                                     <Input
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
-                                        className="text-3xl font-bold h-12"
+                                        className="text-xl font-bold h-10"
                                         onBlur={handleTitleSave}
                                         onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
                                         autoFocus
@@ -367,7 +367,7 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                             ) : (
                                 <h1
                                     onClick={() => setIsEditingTitle(true)}
-                                    className="text-3xl font-bold text-foreground mb-2 leading-tight hover:bg-accent/50 p-1 -ml-1 rounded cursor-pointer transition-colors border border-transparent hover:border-border"
+                                    className="text-xl font-bold text-foreground mb-2 leading-tight hover:bg-accent/50 p-1 -ml-1 rounded cursor-pointer transition-colors border border-transparent hover:border-border"
                                     title="Click to edit title"
                                 >
                                     {title}

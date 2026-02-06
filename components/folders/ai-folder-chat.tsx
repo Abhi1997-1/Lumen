@@ -61,7 +61,7 @@ export function AiFolderChat({ folderId, folderName }: AiFolderChatProps) {
                                 <Bot className="h-5 w-5 text-indigo-500" />
                             </div>
                             <div>
-                                <h3 className="text-sm font-semibold text-foreground">Folder Intelligence</h3>
+                                <h3 className="text-sm font-semibold text-foreground">Folder Insights</h3>
                                 <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                                     <FolderOpen className="h-3 w-3" /> {folderName}
                                 </p>
@@ -83,23 +83,39 @@ export function AiFolderChat({ folderId, folderName }: AiFolderChatProps) {
                         {messages.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground space-y-2">
                                 <Sparkles className="h-8 w-8 opacity-20 text-indigo-500" />
-                                <p className="text-sm">Ask about all meetings in this folder.</p>
-                                <div className="flex flex-wrap justify-center gap-2 mt-4">
+                                <p className="text-sm max-w-[280px]">Analyze patterns, decisions, and action items across all meetings in this folder.</p>
+                                <div className="flex flex-wrap justify-center gap-2 mt-4 px-2">
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="text-xs border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 h-auto py-1 dark:border-indigo-900 dark:bg-indigo-900/20"
-                                        onClick={() => handleAsk(undefined, "Summarize common themes across these meetings")}
+                                        className="text-[11px] border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 h-auto py-1.5 dark:border-indigo-900 dark:bg-indigo-900/20"
+                                        onClick={() => handleAsk(undefined, "What are the key decisions made across these meetings?")}
                                     >
-                                        Summarize Themes
+                                        Key Decisions
                                     </Button>
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="text-xs border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 h-auto py-1 dark:border-indigo-900 dark:bg-indigo-900/20"
+                                        className="text-[11px] border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 h-auto py-1.5 dark:border-indigo-900 dark:bg-indigo-900/20"
+                                        onClick={() => handleAsk(undefined, "Draft a progress report based on this folder")}
+                                    >
+                                        Draft Progress Report
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-[11px] border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 h-auto py-1.5 dark:border-indigo-900 dark:bg-indigo-900/20"
+                                        onClick={() => handleAsk(undefined, "Are there any conflicting details between meetings?")}
+                                    >
+                                        Identify Conflicts
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-[11px] border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 h-auto py-1.5 dark:border-indigo-900 dark:bg-indigo-900/20"
                                         onClick={() => handleAsk(undefined, "List all action items from this folder")}
                                     >
-                                        Combined Actions
+                                        All Action Items
                                     </Button>
                                 </div>
                             </div>
@@ -157,9 +173,9 @@ export function AiFolderChat({ folderId, folderName }: AiFolderChatProps) {
                     className="h-14 pl-4 pr-6 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 flex items-center gap-3 transition-transform hover:scale-105"
                 >
                     <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
-                        <FolderOpen className="h-4 w-4" />
+                        <Sparkles className="h-4 w-4" />
                     </div>
-                    <span className="font-medium">Chat with Folder</span>
+                    <span className="font-medium">Folder Insights</span>
                 </Button>
             )}
         </div>
