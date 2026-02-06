@@ -120,7 +120,9 @@ export function PremiumProcessingOverlay({ status, progress, onCancel }: Premium
 
                         <h1 className="text-3xl font-bold text-foreground text-center mb-3">Transcribing Audio Content</h1>
                         <p className="text-muted-foreground text-center max-w-md">
-                            Our AI is currently mapping audio frequencies to high-accuracy text. {status}
+                            {progress > 90
+                                ? "Finishing touches... The AI is ensuring maximum accuracy. This might take a moment for longer files."
+                                : `Our AI is currently mapping audio frequencies to high-accuracy text. ${status}`}
                         </p>
 
                         <div className="mt-12">
@@ -178,20 +180,20 @@ function LivePreviewLog() {
     const [lines, setLines] = React.useState<string[]>([])
     const messages = [
         "Initializing audio stream...",
-        "Detecting speaker voice signature...",
-        "Identifying background noise floor...",
-        "Speaker 1: Welcome everyone to the meeting.",
-        "Speaker 1: Today we are discussing Q3 goals.",
+        "Handshake established with Lumen Engine...",
+        "Detecting background noise floor: -42dB",
+        "Calibrating voice isolation algorithm...",
+        "Buffer segment 0x1A4 received...",
+        "IDENTIFIED: Main Speaker (Confidence 98%)",
         "Processing harmonic frequencies...",
-        "Speaker 2: I have the data ready to present.",
-        "Analyzing sentiment patterns...",
-        "Speaker 1: Excellent. Let's start with the sales figures.",
+        "ALIGNMENT: Segment 1 synced.",
+        "Analyzing sentiment patterns [Neutral]...",
         "Transcribing segment 442-A...",
-        "Speaker 2: Sales are up 15% quarter over quarter.",
+        "Optimizing for clarity and grammar...",
         "Generating semantic summary...",
-        "Speaker 3: That exceeds our projections.",
-        "Optimizing for clarity...",
-        "Speaker 1: Great work team. Let's keep this momentum.",
+        "Extracting key action items...",
+        "Finalizing text output stream...",
+        "Verification complete.",
     ]
 
     React.useEffect(() => {
