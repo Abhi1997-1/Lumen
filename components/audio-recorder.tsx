@@ -29,6 +29,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     const [liveTranscript, setLiveTranscript] = useState("")
     const [liveTranslation, setLiveTranslation] = useState("")
     const [targetLanguage, setTargetLanguage] = useState("English")
+    const [isProcessingChunk, setIsProcessingChunk] = useState(false)
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null)
     const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -80,6 +81,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
             mediaRecorder.ondataavailable = async (e) => {
                 if (e.data.size > 0) {
                     chunksRef.current.push(e.data)
+                    setIsProcessingChunk(true);
 
                     const chunkBlob = new Blob([e.data], { type: 'audio/webm' });
                     const formData = new FormData();
@@ -94,6 +96,8 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
                         }
                     } catch (err) {
                         console.error("Live transcribe error", err);
+                    } finally {
+                        setIsProcessingChunk(false);
                     }
                 }
             }
@@ -400,7 +404,12 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
                             {isRecording && <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />}
                         </div>
                         <CardContent className="p-4 overflow-y-auto font-mono text-sm text-zinc-300 leading-relaxed" ref={transcriptRef}>
-                            {liveTranscript || <span className="text-zinc-600 italic">Waiting...</span>}
+                            {liveTranscript || <span className="text-zinc-600 italic">Waiting for speech...</span>}
+                            {isProcessingChunk && (
+                                <span className="inline-flex items-center gap-1 ml-2 text-indigo-500 text-xs animate-pulse">
+                                    <Sparkles className="h-3 w-3" /> Processing...
+                                </span>
+                            )}
                         </CardContent>
                     </Card>
 
