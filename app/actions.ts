@@ -99,6 +99,7 @@ export async function retryProcessing(meetingId: string) {
 
     // Trigger Gemini (Await this time to catch errors live)
     try {
+        console.log("Retrying meeting:", meetingId, "File:", meeting.audio_url);
         const result = await processMeetingWithGemini(user.id, meeting.audio_url);
 
         await supabase.from('meetings').update({
