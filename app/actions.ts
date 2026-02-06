@@ -97,27 +97,28 @@ export async function retryProcessing(meetingId: string) {
     // Reset status to processing
     await supabase.from('meetings').update({ status: 'processing', transcript: '', summary: '' }).eq('id', meetingId);
 
-    // Trigger Gemini
-    processMeetingWithGemini(user.id, meeting.audio_url)
-        .then(async (result) => {
-            await supabase.from('meetings').update({
-                transcript: result.transcript,
-                summary: result.summary,
-                action_items: result.action_items,
-                status: 'completed'
-            }).eq('id', meetingId);
-        })
-        .catch(async (e) => {
-            console.error("Async processing failed:", e);
-            const errorMessage = e instanceof Error ? e.message : "Unknown error";
-            await supabase.from('meetings').update({
-                status: 'failed',
-                summary: `Processing Error: ${errorMessage}`
-            }).eq('id', meeting.id)
-        })
+    // Trigger Gemini (Await this time to catch errors live)
+    try {
+        const result = await processMeetingWithGemini(user.id, meeting.audio_url);
 
-    revalidatePath(`/dashboard/${meetingId}`);
-    return { success: true };
+        await supabase.from('meetings').update({
+            transcript: result.transcript,
+            summary: result.summary,
+            action_items: result.action_items,
+            status: 'completed'
+        }).eq('id', meetingId);
+
+        revalidatePath(`/dashboard/${meetingId}`);
+        return { success: true };
+
+    } catch (e: any) {
+        console.error("Retry failed synchronously:", e);
+        await supabase.from('meetings').update({
+            status: 'failed',
+            summary: `Retry Error: ${e.message}`
+        }).eq('id', meetingId);
+        return { success: false, error: e.message };
+    }
 }
 
 export async function getMeetingStatus(meetingId: string) {
