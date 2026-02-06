@@ -142,7 +142,7 @@ export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobi
                 )}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <div className={cn("flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors cursor-pointer group", collapsed && "justify-center")}>
+                        <button className={cn("w-full flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors cursor-pointer group outline-none", collapsed && "justify-center")}>
                             {/* User Info */}
                             <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
                                 {user.email?.charAt(0).toUpperCase()}
@@ -150,10 +150,10 @@ export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobi
                             {!collapsed && (
                                 <div className="flex flex-col min-w-0 text-left">
                                     <span className="text-sm font-semibold text-foreground truncate">{user?.user_metadata?.full_name || 'User'}</span>
-                                    <span className="text-[10px] text-muted-foreground truncate" title={user.email}>Free Plan</span>
+                                    <span className="text-[10px] text-muted-foreground truncate" title={user.email}>{usageData?.tier === 'pro' ? 'Pro Plan' : 'Free Plan'}</span>
                                 </div>
                             )}
-                        </div>
+                        </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56" align="start" side="right" sideOffset={10}>
                         <DropdownMenuLabel>My Account</DropdownMenuLabel>
