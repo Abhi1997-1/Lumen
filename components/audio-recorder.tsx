@@ -64,14 +64,18 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         if (translationRef.current) translationRef.current.scrollTop = translationRef.current.scrollHeight;
     }, [liveTranscript, liveTranslation])
 
-    const startRecording = async () => {
+    const startRecording = async (reset = true) => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
             const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
             mediaRecorderRef.current = mediaRecorder
-            chunksRef.current = []
-            setLiveTranscript("")
-            setLiveTranslation("")
+
+            if (reset) {
+                chunksRef.current = []
+                setLiveTranscript("")
+                setLiveTranslation("")
+                setDuration(0)
+            }
 
             mediaRecorder.ondataavailable = async (e) => {
                 if (e.data.size > 0) {
@@ -106,8 +110,11 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
 
             setIsRecording(true)
             setIsPaused(false)
-            setDuration(0)
             setAudioBlob(null)
+
+            if (reset) {
+                setDuration(0);
+            }
 
             timerRef.current = setInterval(() => {
                 setDuration(prev => prev + 1)
@@ -119,6 +126,10 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
             console.error("Error accessing microphone:", err)
             alert("Could not access microphone. Please ensure permissions are granted.")
         }
+    }
+
+    const resumeFromStop = () => {
+        startRecording(false); // false = do not reset chunks/transcript
     }
 
     const pauseRecording = () => {
@@ -305,7 +316,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
                         {!isRecording && !audioBlob && (
                             <Button
                                 size="lg"
-                                onClick={startRecording}
+                                onClick={() => startRecording(true)}
                                 className="h-20 w-20 rounded-full bg-red-600 hover:bg-red-500 shadow-[0_0_40px_rgba(220,38,38,0.5)] border-4 border-zinc-800 transition-all hover:scale-110 active:scale-95"
                             >
                                 <Mic className="h-8 w-8 text-white" />
@@ -351,6 +362,16 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
                                     className="h-14 w-14 rounded-full border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-red-500 hover:border-red-500/50 hover:bg-zinc-900"
                                 >
                                     <Trash2 className="h-6 w-6" />
+                                </Button>
+
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={resumeFromStop}
+                                    title="Resume Recording"
+                                    className="h-14 w-14 rounded-full border-zinc-700 bg-zinc-900 text-green-400 hover:text-green-500 hover:border-green-500/50 hover:bg-zinc-900"
+                                >
+                                    <Mic className="h-6 w-6" />
                                 </Button>
 
                                 <Button

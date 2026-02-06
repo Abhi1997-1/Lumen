@@ -4,7 +4,7 @@
 import { useState } from "react";
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { MeetingProcessing } from '@/components/meeting-processing'
+import { PremiumProcessingOverlay } from '@/components/ui/premium-processing-overlay'
 import { ActionItemChecklist } from '@/components/action-item-checklist'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -195,8 +195,23 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
         }
     }
 
+    // Simulate progress for the overlay since we don't have real-time socket updates yet
+    const [simulatedProgress, setSimulatedProgress] = useState(10);
+
+    useEffect(() => {
+        if (!meeting.transcript && !meeting.summary) {
+            const interval = setInterval(() => {
+                setSimulatedProgress(prev => {
+                    if (prev >= 95) return 95;
+                    return prev + Math.random() * 5; // meaningful increments
+                });
+            }, 800);
+            return () => clearInterval(interval);
+        }
+    }, [meeting.transcript, meeting.summary]);
+
     if (!meeting.transcript && !meeting.summary) {
-        return <div className="p-8"><MeetingProcessing /></div>
+        return <PremiumProcessingOverlay status="Analyzing Audio..." progress={simulatedProgress} />
     }
 
     return (
