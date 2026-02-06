@@ -3,9 +3,9 @@
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Sparkles, Key, AlertTriangle } from "lucide-react"
+import { Sparkles, Key, AlertTriangle, X } from "lucide-react"
 import { SubscriptionModal } from "@/components/subscription-modal"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
 interface UsageCardProps {
@@ -16,7 +16,14 @@ interface UsageCardProps {
 
 export function UsageCard({ usedTokens, limitTokens, tier }: UsageCardProps) {
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [isDismissed, setIsDismissed] = useState(false)
     const router = useRouter()
+
+    useEffect(() => {
+        if (localStorage.getItem("usage_card_dismissed") === "true") {
+            setIsDismissed(true)
+        }
+    }, [])
 
     // Normalization logic:
     // If limitTokens is -1, it's unlimited.
@@ -45,9 +52,16 @@ export function UsageCard({ usedTokens, limitTokens, tier }: UsageCardProps) {
         return num.toString()
     }
 
+    const handleDismiss = () => {
+        setIsDismissed(true)
+        localStorage.setItem("usage_card_dismissed", "true")
+    }
+
+    if (isDismissed) return null
+
     return (
         <>
-            <Card className="bg-card border-border overflow-hidden relative shadow-sm">
+            <Card className="bg-card border-border overflow-hidden relative shadow-sm group">
 
                 {/* Visual Flair for Pro (Subtler) */}
                 {isPro && <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/10 blur-xl rounded-full -mr-8 -mt-8" />}
@@ -64,6 +78,14 @@ export function UsageCard({ usedTokens, limitTokens, tier }: UsageCardProps) {
                                 {isPro ? 'Pro Plan' : 'Standard Plan'}
                             </span>
                         </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 -mr-1 -mt-1 text-muted-foreground/50 hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={handleDismiss}
+                        >
+                            <X className="h-3 w-3" />
+                        </Button>
                     </div>
 
                     {isPro ? (
