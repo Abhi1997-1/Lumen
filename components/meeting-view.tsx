@@ -458,13 +458,13 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
 
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                    <span className="flex items-center gap-1.5" suppressHydrationWarning>
+                                    <span className="flex items-center gap-1.5">
                                         <Calendar className="h-3.5 w-3.5" />
-                                        {new Date(currentMeeting.created_at).toLocaleDateString()}
+                                        <ClientDate date={currentMeeting.created_at} mode="date" />
                                     </span>
-                                    <span className="flex items-center gap-1.5" suppressHydrationWarning>
+                                    <span className="flex items-center gap-1.5">
                                         <Clock className="h-3.5 w-3.5" />
-                                        {new Date(currentMeeting.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        <ClientDate date={currentMeeting.created_at} mode="time" />
                                     </span>
                                 </div>
 
