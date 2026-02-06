@@ -7,9 +7,10 @@ import { MessageSquare } from "lucide-react";
 
 interface TranscriptViewProps {
     originalTranscript: string;
+    searchTerm?: string;
 }
 
-export function TranscriptView({ originalTranscript }: TranscriptViewProps) {
+export function TranscriptView({ originalTranscript, searchTerm = "" }: TranscriptViewProps) {
     // Determine if we have content
     const hasContent = originalTranscript && originalTranscript.trim().length > 0;
 
@@ -18,6 +19,23 @@ export function TranscriptView({ originalTranscript }: TranscriptViewProps) {
         const sec = seconds % 60;
         return `${min}:${sec.toString().padStart(2, '0')}`;
     }
+
+    // Helper to highlight text
+    const highlightText = (text: string) => {
+        if (!searchTerm) return text;
+        const parts = text.split(new RegExp(`(${searchTerm})`, 'gi'));
+        return (
+            <span>
+                {parts.map((part, i) =>
+                    part.toLowerCase() === searchTerm.toLowerCase() ? (
+                        <span key={i} className="bg-yellow-200 dark:bg-yellow-900/50 text-foreground font-medium px-0.5 rounded">{part}</span>
+                    ) : (
+                        part
+                    )
+                )}
+            </span>
+        );
+    };
 
     return (
         <div className="space-y-6">
@@ -35,25 +53,21 @@ export function TranscriptView({ originalTranscript }: TranscriptViewProps) {
                 <div className="absolute left-4 top-4 bottom-4 w-[2px] bg-border/50" />
 
                 {hasContent ? (
-                    // Regex to match "Speaker X:" or just newlines. 
-                    // We split by newline first, then if a line has multiple speakers, we split again?
-                    // Simpler: Replace "Speaker" with "\nSpeaker" to force newlines? 
-                    // Robust: Match /(?=Speaker \d+:)/g or similar known patterns
                     originalTranscript
-                        .replace(/(Speaker \d+:)/g, '\n$1') // Ensure newlines before speakers
+                        .replace(/(Speaker \d+:)/g, '\n$1')
                         .split('\n')
                         .map((line: string, i: number) => {
 
                             const colonIndex = line.indexOf(':');
                             const speaker = colonIndex > -1 && colonIndex < 20 ? line.substring(0, colonIndex) : null;
-
-                            // Clean up text
                             const text = speaker ? line.substring(colonIndex + 1).trim() : line.trim();
 
-                            // Skip empty lines
                             if (!line.trim()) return null;
 
-                            // Determine Color based on speaker (simple hash for consistent colors)
+                            // Filter if search term is present (optional, but highlighting is often better)
+                            // Let's just highlight for now, unless user explicitly wanted filtering.
+                            // The user said "search on the transcript page", highlighting is standard matching behavior.
+
                             const speakerColor = speaker ? (speaker.length % 2 === 0 ? 'text-indigo-500 underline decoration-indigo-500/30' : 'text-emerald-500 underline decoration-emerald-500/30') : 'text-muted-foreground';
                             const avatarBg = speaker ? (speaker.length % 2 === 0 ? 'bg-indigo-500/10 text-indigo-500' : 'bg-emerald-500/10 text-emerald-500') : 'bg-muted';
 
@@ -70,11 +84,12 @@ export function TranscriptView({ originalTranscript }: TranscriptViewProps) {
                                         {speaker && (
                                             <p className={`text-xs font-bold uppercase tracking-wider ${speakerColor} flex items-center gap-2`}>
                                                 {speaker}
-                                                <span className="text-[10px] text-muted-foreground font-normal normal-case no-underline">• {formatTime(i * 30)}</span> {/* Mock timestamp */}
+                                                <span className="text-[10px] text-muted-foreground font-normal normal-case no-underline">• {formatTime(i * 30)}</span>
                                             </p>
                                         )}
-                                        <p className="text-foreground leading-relaxed text-[15px] transition-colors font-light">
-                                            {text}
+                                        {/* REMOVED hardcoded text-[15px] to allow inheritance */}
+                                        <p className="text-foreground leading-relaxed transition-colors font-light">
+                                            {highlightText(text)}
                                         </p>
                                     </div>
                                 </div>

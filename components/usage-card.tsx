@@ -47,21 +47,20 @@ export function UsageCard({ usedTokens, limitTokens, tier }: UsageCardProps) {
 
     return (
         <>
-            <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-border/50 overflow-hidden relative shadow-lg">
-                <div className="absolute inset-0 bg-grid-white/5 mask-image-b-0 pointer-events-none" />
+            <Card className="bg-card border-border overflow-hidden relative shadow-sm">
 
-                {/* Visual Flair for Pro */}
-                {isPro && <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/20 blur-2xl rounded-full -mr-10 -mt-10" />}
+                {/* Visual Flair for Pro (Subtler) */}
+                {isPro && <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/10 blur-xl rounded-full -mr-8 -mt-8" />}
 
-                <CardContent className="p-4 space-y-3 relative z-10">
+                <CardContent className="p-3 space-y-2 relative z-10">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             {isPro ? (
-                                <Sparkles className="h-4 w-4 text-indigo-400 fill-indigo-400" />
+                                <Sparkles className="h-3.5 w-3.5 text-indigo-500 fill-indigo-500" />
                             ) : (
-                                <Key className="h-4 w-4 text-purple-400" />
+                                <Key className="h-3.5 w-3.5 text-purple-500" />
                             )}
-                            <span className="text-sm font-semibold text-white capitalize">
+                            <span className="text-xs font-semibold text-foreground capitalize">
                                 {isPro ? 'Pro Plan' : 'Standard Plan'}
                             </span>
                         </div>
@@ -69,50 +68,47 @@ export function UsageCard({ usedTokens, limitTokens, tier }: UsageCardProps) {
 
                     {isPro ? (
                         <div className="space-y-1">
-                            <div className="flex justify-between text-xs text-indigo-200">
+                            <div className="flex justify-between text-[10px] text-muted-foreground">
                                 <span>{formatNumber(usedTokens)}</span>
                                 <span>{formatNumber(limitTokens)} Limit</span>
                             </div>
-                            <Progress value={percentage} className="h-2 bg-indigo-950/50 [&>div]:bg-gradient-to-r [&>div]:from-indigo-500 [&>div]:to-purple-500" />
+                            <Progress value={percentage} className="h-1.5 bg-secondary [&>div]:bg-indigo-500" />
                         </div>
                     ) : (
                         // BYOK State
                         <div className="space-y-1">
                             {isUnlimited ? (
-                                <div className="text-xs text-slate-300 flex items-center gap-2">
-                                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                                    BYOK Active: Unlimited
+                                <div className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                    BYOK Active
                                 </div>
                             ) : (
-                                // No Key Detected (Fallthrough if limit is small)
-                                // Actually, we should probably handle "No Key" better.
-                                // If the server returns strict 0 limit for no-key users, we can show a warning.
-                                <div className="text-xs text-orange-300 flex items-center gap-1.5 bg-orange-500/10 p-1.5 rounded-md border border-orange-500/20">
+                                <div className="text-[10px] text-orange-600 dark:text-orange-400 flex items-center gap-1.5 bg-orange-500/10 p-1 rounded border border-orange-500/20">
                                     <AlertTriangle className="h-3 w-3" />
-                                    <span>Setup Key to start</span>
+                                    <span>Setup Key</span>
                                 </div>
                             )}
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 gap-2 pt-1">
+                    <div className="grid grid-cols-1 gap-1.5 pt-1">
                         {!isPro && !isUnlimited && (
                             <Button
                                 variant="secondary"
                                 size="sm"
-                                className="w-full bg-white/10 hover:bg-white/20 text-white border-0 h-7 text-xs font-medium"
+                                className="w-full bg-secondary hover:bg-secondary/80 text-secondary-foreground border-0 h-7 text-xs font-medium"
                                 onClick={() => router.push('/dashboard/settings')}
                             >
                                 Add API Key
                             </Button>
                         )}
                         <Button
-                            variant={isPro ? "outline" : "default"} // Invert style for emphasis
+                            variant={isPro ? "outline" : "default"}
                             size="sm"
-                            className={`w-full h-7 text-xs font-medium ${isPro ? "bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border-indigo-500/30" : "bg-indigo-600 hover:bg-indigo-700 text-white"}`}
+                            className={`w-full h-7 text-xs font-medium ${isPro ? "bg-background hover:bg-accent text-foreground border-input" : "bg-indigo-600 hover:bg-indigo-700 text-white"}`}
                             onClick={() => setIsModalOpen(true)}
                         >
-                            {isPro ? 'Manage Subscription' : 'Upgrade to Pro'}
+                            {isPro ? 'Manage' : 'Upgrade'}
                         </Button>
                     </div>
                 </CardContent>
