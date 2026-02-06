@@ -197,7 +197,7 @@ export async function generateMeetingTranslation(userId: string, meetingSummary:
 
 export async function processFolderChat(userId: string, folderId: string, question: string) {
     try {
-        const supabase = await createClient();
+        const supabase = await createAdminClient();
 
         // 1. Fetch all meetings in the folder
         const { data: meetings, error } = await supabase
