@@ -321,3 +321,25 @@ export async function transcribeChunkAction(formData: FormData) {
         return { success: false, text: "" };
     }
 }
+
+export async function saveTranslatedMeeting(meetingId: string, translatedData: any) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Not authenticated" }
+
+    const { error } = await supabase
+        .from('meetings')
+        .update({
+            transcript: translatedData.transcript,
+            summary: translatedData.summary,
+            action_items: translatedData.action_items,
+            // We might want to store 'original_language' or 'translated_language' column?
+            // For now, we update the main fields as requested.
+        })
+        .eq('id', meetingId)
+        .eq('user_id', user.id)
+
+    if (error) return { success: false, error: error.message }
+    revalidatePath(`/dashboard/${meetingId}`)
+    return { success: true }
+}
