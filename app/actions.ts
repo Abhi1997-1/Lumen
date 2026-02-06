@@ -114,11 +114,17 @@ export async function retryProcessing(meetingId: string) {
 
     } catch (e: any) {
         console.error("Retry failed synchronously:", e);
+
+        let friendlyError = e.message;
+        if (e.message.includes('429') || e.message.includes('Quota') || e.message.includes('limit')) {
+            friendlyError = "Daily Limit Exceeded. Please add your own API Key in Settings to continue.";
+        }
+
         await supabase.from('meetings').update({
             status: 'failed',
-            summary: `Retry Error: ${e.message}`
+            summary: `Processing Failed: ${friendlyError}`
         }).eq('id', meetingId);
-        return { success: false, error: e.message };
+        return { success: false, error: friendlyError };
     }
 }
 

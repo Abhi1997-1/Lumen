@@ -10,7 +10,7 @@ export default async function AccountPage() {
     if (!user) redirect('/login')
 
     return (
-        <div className="space-y-8 max-w-4xl">
+        <div className="flex flex-col gap-8 p-6 lg:p-8 max-w-4xl mx-auto w-full">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight text-foreground">My Account</h1>
                 <p className="text-muted-foreground">Manage your personal details and application preferences.</p>
