@@ -16,48 +16,60 @@ interface UsageCardProps {
 
 export function UsageCard({ usedTokens, limitTokens, tier }: UsageCardProps) {
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [isDismissed, setIsDismissed] = useState(false)
+    const [isMinimized, setIsMinimized] = useState(false)
     const router = useRouter()
 
     useEffect(() => {
-        if (localStorage.getItem("usage_card_dismissed") === "true") {
-            setIsDismissed(true)
+        if (localStorage.getItem("usage_card_minimized") === "true") {
+            setIsMinimized(true)
         }
     }, [])
 
-    // Normalization logic:
-    // If limitTokens is -1, it's unlimited.
-    // If limitTokens > 0, it's a quota (e.g. Pro).
-    // If limitTokens is 0 or undefined, maybe just show used.
-
-    const isUnlimited = limitTokens === -1 || limitTokens >= 100000000 // Treat very high as unlimited for safety
+    // ... (keep normalization logic) ...
+    const isUnlimited = limitTokens === -1 || limitTokens >= 100000000
     const isPro = tier === 'pro'
-    // const isFree = tier === 'free' // Effectively BYOK now
+    // ...
 
-    // NOTE: In the new model, "Free" without a key is basically unconnected.
-    // We can infer "No Key" if limits are weird or just rely on passing a prop. 
-    // For now, let's assume if it's NOT pro, it's BYOK. 
-    // The parent passes "limit: -1" if key exists, or maybe "limit: 0" if no key? 
-    // Let's look at `getMonthlyUsage`. It returns limit: 2M default. We need to change that.
-
-    // Calculate percentage only if bounded
-    const percentage = !isUnlimited && limitTokens > 0
-        ? Math.min((usedTokens / limitTokens) * 100, 100)
-        : 0
-
-    // Format numbers
     const formatNumber = (num: number) => {
         if (num >= 1000000) return (num / 1000000).toFixed(1) + "M"
         if (num >= 1000) return (num / 1000).toFixed(1) + "k"
         return num.toString()
     }
 
-    const handleDismiss = () => {
-        setIsDismissed(true)
-        localStorage.setItem("usage_card_dismissed", "true")
+    const handleMinimize = () => {
+        setIsMinimized(true)
+        localStorage.setItem("usage_card_minimized", "true")
     }
 
-    if (isDismissed) return null
+    if (isMinimized) {
+        return (
+            <>
+                <Card className="bg-card border-border overflow-hidden relative shadow-sm group">
+                    <CardContent className="p-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            {isPro ? (
+                                <Sparkles className="h-3.5 w-3.5 text-indigo-500 fill-indigo-500" />
+                            ) : (
+                                <Key className="h-3.5 w-3.5 text-purple-500" />
+                            )}
+                            <span className="text-xs font-semibold text-foreground capitalize">
+                                {isPro ? 'Pro Plan' : 'Standard Plan'}
+                            </span>
+                        </div>
+                        <Button
+                            variant={isPro ? "outline" : "default"}
+                            size="sm"
+                            className={`h-6 text-[10px] px-2 font-medium ${isPro ? "bg-background hover:bg-accent text-foreground border-input" : "bg-indigo-600 hover:bg-indigo-700 text-white"}`}
+                            onClick={() => setIsModalOpen(true)}
+                        >
+                            {isPro ? 'Manage' : 'Upgrade'}
+                        </Button>
+                    </CardContent>
+                </Card>
+                <SubscriptionModal open={isModalOpen} onOpenChange={setIsModalOpen} currentTier={tier} />
+            </>
+        )
+    }
 
     return (
         <>
@@ -82,7 +94,7 @@ export function UsageCard({ usedTokens, limitTokens, tier }: UsageCardProps) {
                             variant="ghost"
                             size="icon"
                             className="h-5 w-5 -mr-1 -mt-1 text-muted-foreground/50 hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={handleDismiss}
+                            onClick={handleMinimize}
                         >
                             <X className="h-3 w-3" />
                         </Button>
