@@ -658,3 +658,13 @@ function ShareIcon(props: any) {
 function ExportIcon(props: any) {
     return <Download {...props} />
 }
+
+function ClientDate({ date, mode }: { date: string, mode: 'date' | 'time' }) {
+    const [mounted, setMounted] = useState(false)
+    useEffect(() => setMounted(true), [])
+
+    if (!mounted) return <span className="opacity-0">...</span> // Placeholder to avoid layout shift
+
+    const d = new Date(date)
+    return <>{mode === 'date' ? d.toLocaleDateString() : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</>
+}
