@@ -82,47 +82,63 @@ export function AiChatBar({ context }: AiChatBarProps) {
                             <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground space-y-2">
                                 <Sparkles className="h-8 w-8 opacity-20" />
                                 <p className="text-sm">Ask me anything about the meeting.</p>
-                                <div className="flex flex-wrap justify-center gap-2 mt-4">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="text-xs border-border bg-muted/50 hover:bg-muted h-7"
-                                        onClick={() => handleAsk(undefined, "What are the key takeaways?")}
-                                    >
-                                        Key Takeaways
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="text-xs border-border bg-muted/50 hover:bg-muted h-7"
-                                        onClick={() => handleAsk(undefined, "List action items")}
-                                    >
-                                        Action Items
-                                    </Button>
-                                </div>
                             </div>
                         ) : (
                             messages.map((msg, i) => (
                                 <div key={i} className={cn("flex gap-3", msg.role === 'user' ? "flex-row-reverse" : "")}>
                                     <div className={cn(
-                                        "max-w-[85%] rounded-2xl p-3 text-sm leading-relaxed",
+                                        "max-w-[85%] rounded-2xl p-3 text-sm leading-relaxed shadow-sm",
                                         msg.role === 'user'
                                             ? "bg-primary text-primary-foreground rounded-tr-sm"
-                                            : "bg-muted text-foreground border border-border rounded-tl-sm"
+                                            : "bg-white dark:bg-zinc-800 text-foreground border border-border rounded-tl-sm"
                                     )}>
-                                        {msg.content}
+                                        {msg.role === 'assistant' ? (
+                                            <div className="prose prose-sm dark:prose-invert max-w-none">
+                                                {msg.content.split('\n').map((line, j) => {
+                                                    // Simple bold parsing
+                                                    const parts = line.split(/(\*\*.*?\*\*)/g);
+                                                    return (
+                                                        <p key={j} className={cn("mb-1 last:mb-0", line.startsWith('- ') && "pl-4 border-l-2 border-primary/20", line.startsWith('###') && "font-semibold text-primary mt-2")}>
+                                                            {parts.map((part, k) => {
+                                                                if (part.startsWith('**') && part.endsWith('**')) {
+                                                                    return <strong key={k}>{part.slice(2, -2)}</strong>
+                                                                }
+                                                                return part;
+                                                            })}
+                                                        </p>
+                                                    )
+                                                })}
+                                            </div>
+                                        ) : (
+                                            msg.content
+                                        )}
                                     </div>
                                 </div>
                             ))
                         )}
                         {isLoading && (
                             <div className="flex gap-3">
-                                <div className="bg-muted border border-border rounded-2xl rounded-tl-sm p-3 flex items-center gap-2">
+                                <div className="bg-white dark:bg-zinc-800 border border-border rounded-2xl rounded-tl-sm p-3 flex items-center gap-2 shadow-sm">
                                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
                                     <span className="text-xs text-muted-foreground">Thinking...</span>
                                 </div>
                             </div>
                         )}
+                    </div>
+
+                    {/* Suggested Questions (Always visible if space permits, or contextual) */}
+                    <div className="px-4 pb-2 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                        {["Summarize this", "Action items?", "Key decisions", "Sentiment?"].map((q) => (
+                            <button
+                                key={q}
+                                onClick={() => handleAsk(undefined, q)}
+                                disabled={isLoading}
+                                className="whitespace-nowrap flex items-center text-[10px] font-medium px-2.5 py-1.5 rounded-full bg-primary/5 text-primary hover:bg-primary/10 transition-colors border border-primary/10"
+                            >
+                                <Sparkles className="h-3 w-3 mr-1 opacity-50" />
+                                {q}
+                            </button>
+                        ))}
                     </div>
 
                     {/* Input */}

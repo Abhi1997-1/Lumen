@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { ChevronLeft, Upload, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import { createMeeting } from '@/app/actions'
+import { ProcessingOverlay } from '@/components/ui/processing-overlay'
 
 export default function NewMeetingPage() {
     const router = useRouter()
@@ -202,13 +203,7 @@ export default function NewMeetingPage() {
 
                         {/* Progress UI */}
                         {loading && (
-                            <div className="space-y-2 animate-in fade-in zoom-in-95 duration-300">
-                                <div className="flex justify-between text-xs text-muted-foreground">
-                                    <span>{statusText || 'Processing...'}</span>
-                                    {compressing && <span>{progress}%</span>}
-                                </div>
-                                <Progress value={compressing ? progress : (statusText.includes('Uploading') ? 50 : 90)} className="h-2" />
-                            </div>
+                            <ProcessingOverlay status={statusText || (compressing ? 'Compressing...' : 'Uploading...')} progress={compressing ? progress : (statusText.includes('Uploading') ? 50 : 90)} />
                         )}
                     </CardContent>
 
