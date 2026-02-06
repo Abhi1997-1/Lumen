@@ -117,7 +117,17 @@ export default function CalendarPage() {
 
     return (
         <div className="flex flex-col h-full gap-6 p-6 lg:p-8 max-w-[1600px] mx-auto w-full overflow-hidden">
-            <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-background text-foreground rounded-xl border border-border shadow-sm">
+            {/* Header */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between shrink-0">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Calendar</h1>
+                    <p className="text-muted-foreground mt-1">
+                        View your meetings by date
+                    </p>
+                </div>
+            </div>
+
+            <div className="flex-1 flex flex-row min-h-0 overflow-hidden bg-background text-foreground rounded-xl border border-border shadow-sm">
                 <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                     <div className="flex-1 flex flex-col min-w-0 transition-all duration-300 bg-card">
                         <div className="flex items-center justify-between p-4 border-b border-border">

@@ -21,9 +21,9 @@ export function MeetingList({ meetings, query }: MeetingListProps) {
     const [showBulkDelete, setShowBulkDelete] = useState(false)
     const [showBulkMove, setShowBulkMove] = useState(false)
 
-    const toggleSelection = (id: string, checked: boolean) => {
-        if (checked) {
-            setSelectedIds(prev => [...prev, id])
+    const toggleSelection = (id: string, checked: boolean | 'indeterminate') => {
+        if (checked === true) {
+            setSelectedIds(prev => prev.includes(id) ? prev : [...prev, id])
         } else {
             setSelectedIds(prev => prev.filter(item => item !== id))
         }

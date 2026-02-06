@@ -31,8 +31,8 @@ interface MeetingRowProps {
         folder_id: string | null
     }
     selectable?: boolean
-    checked?: boolean
-    onCheckedChange?: (checked: boolean) => void
+    checked?: boolean | 'indeterminate'
+    onCheckedChange?: (checked: boolean | 'indeterminate') => void
 }
 
 export function MeetingRow({ meeting, selectable, checked, onCheckedChange }: MeetingRowProps) {
