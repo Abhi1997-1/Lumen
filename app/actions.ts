@@ -201,12 +201,21 @@ export async function getMonthlyUsage() {
         .single()
 
     // Determine Tier & Limit
-    // Defaults: Free = 2M, Pro = 10M
+    // Defaults: Free (No Key) = 0 (Blocked), Pro = 10M
     const hasCustomKey = !!settings?.gemini_api_key
     const tier = settings?.tier || 'free' // 'free' | 'pro'
-    let limit = 2_000_000
-    if (tier === 'pro') limit = 10_000_000
-    if (hasCustomKey) limit = -1 // Unlimited
+
+    let limit = 0 // Default to 0 for regular free users without key
+
+    if (tier === 'pro') {
+        limit = 10_000_000
+    } else if (hasCustomKey) {
+        limit = -1 // Unlimited for BYOK
+    } else {
+        // Optional: We could give a tiny "trial" amount here if we wanted, 
+        // but user requested "remove free plan", so 0 is safer to force BYOK/Pro.
+        limit = 0
+    }
 
     // 2. Calculate Usage (Sum total_tokens from this month's meetings)
     // Start of month

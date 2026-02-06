@@ -2,7 +2,7 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Check } from "lucide-react"
+import { Check, Zap, Users, Boxes, Key } from "lucide-react"
 import { upgradeTier } from "@/app/actions"
 import { toast } from "sonner"
 import { useState } from "react"
@@ -21,16 +21,15 @@ export function SubscriptionModal({ open, onOpenChange, currentTier }: Subscript
     const handleUpgrade = async (tier: 'pro' | 'unlimited') => {
         setLoading(true)
         try {
-            // Mock payment delay
             await new Promise(resolve => setTimeout(resolve, 1000))
 
             const res = await upgradeTier(tier)
             if (res.success) {
-                toast.success(`Successfully upgraded to ${tier === 'pro' ? 'Pro' : 'Unlimited'}!`)
+                toast.success(`Successfully switched to ${tier === 'pro' ? 'Pro' : 'BYOK'}!`)
                 onOpenChange(false)
                 router.refresh()
             } else {
-                toast.error("Failed to upgrade: " + res.error)
+                toast.error("Failed to update plan: " + res.error)
             }
         } catch (error) {
             toast.error("An error occurred")
@@ -41,75 +40,95 @@ export function SubscriptionModal({ open, onOpenChange, currentTier }: Subscript
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl">
+            <DialogContent className="max-w-4xl">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold text-center">Choose Your Plan</DialogTitle>
+                    <DialogTitle className="text-2xl font-bold text-center">Choose Your Intelligence Model</DialogTitle>
                     <DialogDescription className="text-center text-muted-foreground">
-                        Unlock more processing power and advanced features.
+                        Select how you want to power Lumen's AI capabilities.
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                    {/* Free Tier */}
-                    <div className="relative rounded-2xl border border-border p-6 flex flex-col gap-4 hover:border-indigo-500/50 transition-colors">
-                        <div>
-                            <h3 className="text-lg font-semibold">Free</h3>
-                            <div className="mt-2 text-3xl font-bold">$0<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
-                            <p className="text-sm text-muted-foreground mt-2">Perfect for trying it out.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 max-w-3xl mx-auto w-full">
+                    {/* BYOK Plan */}
+                    <div className="relative rounded-2xl border border-border p-8 flex flex-col gap-4 hover:border-purple-500/50 transition-colors bg-card/50">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                <Key className="h-5 w-5 text-purple-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold">Standard (BYOK)</h3>
+                                <p className="text-sm text-muted-foreground">Bring Your Own Key</p>
+                            </div>
                         </div>
-                        <ul className="space-y-2 text-sm flex-1">
-                            <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" /> 2,000,000 Tokens/mo</li>
-                            <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" /> Standard Processing</li>
-                            <li className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" /> 3-Day History</li>
+
+                        <div className="my-2">
+                            <div className="text-3xl font-bold">$0<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
+                            <p className="text-xs text-muted-foreground mt-2">Plus Google API costs (usually free tier)</p>
+                        </div>
+
+                        <div className="border-t border-border/50 my-2" />
+
+                        <ul className="space-y-3 text-sm flex-1">
+                            <li className="flex items-center gap-2"><Check className="h-5 w-5 text-purple-500" /> <b>Unlimited</b> Processing Tokens</li>
+                            <li className="flex items-center gap-2"><Check className="h-5 w-5 text-purple-500" /> Full Privacy Control</li>
+                            <li className="flex items-center gap-2"><Check className="h-5 w-5 text-purple-500" /> Access to Latest Gemini Models</li>
+                            <li className="flex items-center gap-2"><Check className="h-5 w-5 text-purple-500" /> Standard Support</li>
                         </ul>
-                        <Button variant="outline" disabled={currentTier === 'free'} className="w-full">
-                            {currentTier === 'free' ? 'Current Plan' : 'Downgrade'}
-                        </Button>
+
+                        <div className="flex flex-col gap-2 mt-4">
+                            <Button
+                                variant={currentTier !== 'pro' ? "outline" : "default"}
+                                className={currentTier !== 'pro' ? "border-purple-500/20 bg-purple-500/5 text-purple-500 pointer-events-none" : "hover:bg-purple-600"}
+                                onClick={() => handleUpgrade('unlimited')}
+                                disabled={currentTier !== 'pro' || loading}
+                            >
+                                {currentTier !== 'pro' ? 'Current Plan' : 'Switch to BYOK'}
+                            </Button>
+                            {currentTier !== 'pro' && (
+                                <Button variant="link" className="text-xs text-muted-foreground h-auto p-0" onClick={() => router.push('/dashboard/settings')}>
+                                    Configure API Key
+                                </Button>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Pro Tier */}
-                    <div className="relative rounded-2xl border-2 border-indigo-500 bg-indigo-500/5 p-6 flex flex-col gap-4 shadow-xl">
-                        <div className="absolute -top-3 left-0 right-0 flex justify-center">
-                            <span className="bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Most Popular</span>
+                    {/* Pro Plan */}
+                    <div className="relative rounded-2xl border-2 border-indigo-500 bg-indigo-500/5 p-8 flex flex-col gap-4 shadow-2xl">
+                        <div className="absolute -top-4 left-0 right-0 flex justify-center">
+                            <span className="bg-indigo-600 text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wide shadow-lg shadow-indigo-600/20">Recommended</span>
                         </div>
-                        <div>
-                            <h3 className="text-lg font-semibold text-indigo-400">Pro</h3>
-                            <div className="mt-2 text-3xl font-bold">$19<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
-                            <p className="text-sm text-muted-foreground mt-2">For power users & teams.</p>
+
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="h-10 w-10 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                                <Zap className="h-5 w-5 text-indigo-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-indigo-400">Pro</h3>
+                                <p className="text-sm text-indigo-200/70">Managed Intelligence</p>
+                            </div>
                         </div>
-                        <ul className="space-y-2 text-sm flex-1">
-                            <li className="flex items-center gap-2"><Check className="h-4 w-4 text-indigo-500" /> 10,000,000 Tokens/mo</li>
-                            <li className="flex items-center gap-2"><Check className="h-4 w-4 text-indigo-500" /> Priority Processing</li>
-                            <li className="flex items-center gap-2"><Check className="h-4 w-4 text-indigo-500" /> Unlimited History</li>
-                            <li className="flex items-center gap-2"><Check className="h-4 w-4 text-indigo-500" /> Advanced AI Analysis</li>
+
+                        <div className="my-2">
+                            <div className="text-3xl font-bold">$19<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
+                            <p className="text-xs text-muted-foreground mt-2">Billed monthly. Cancel anytime.</p>
+                        </div>
+
+                        <div className="border-t border-border/50 my-2" />
+
+                        <ul className="space-y-3 text-sm flex-1">
+                            <li className="flex items-center gap-2"><Check className="h-5 w-5 text-indigo-400" /> <b>Managed</b> API Access (No Key Needed)</li>
+                            <li className="flex items-center gap-2"><Check className="h-5 w-5 text-indigo-400" /> <b>Team workspaces</b> for collaboration</li>
+                            <li className="flex items-center gap-2"><Check className="h-5 w-5 text-indigo-400" /> <b>Unlimited</b> History Retention</li>
+                            <li className="flex items-center gap-2"><Boxes className="h-4 w-4 text-indigo-400 ml-0.5 mr-0.5" /> Integrations (Slack, Notion, Trello)</li>
+                            <li className="flex items-center gap-2"><Users className="h-4 w-4 text-indigo-400 ml-0.5 mr-0.5" /> Advanced Speaker Identification</li>
                         </ul>
+
                         <Button
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-4 h-11"
                             onClick={() => handleUpgrade('pro')}
                             disabled={loading || currentTier === 'pro'}
                         >
-                            {currentTier === 'pro' ? 'Current Plan' : (loading ? 'Processing...' : 'Upgrade Now')}
-                        </Button>
-                    </div>
-
-                    {/* Unlimited / BYOK */}
-                    <div className="relative rounded-2xl border border-border p-6 flex flex-col gap-4 hover:border-purple-500/50 transition-colors">
-                        <div>
-                            <h3 className="text-lg font-semibold">Enterprise / BYOK</h3>
-                            <div className="mt-2 text-3xl font-bold">Custom<span className="text-sm font-normal text-muted-foreground">/key</span></div>
-                            <p className="text-sm text-muted-foreground mt-2">Use your own Gemini API Key.</p>
-                        </div>
-                        <ul className="space-y-2 text-sm flex-1">
-                            <li className="flex items-center gap-2"><Check className="h-4 w-4 text-purple-500" /> Unlimited Tokens</li>
-                            <li className="flex items-center gap-2"><Check className="h-4 w-4 text-purple-500" /> Highest Privacy</li>
-                            <li className="flex items-center gap-2"><Check className="h-4 w-4 text-purple-500" /> No Rate Limits</li>
-                        </ul>
-                        <Button
-                            variant="outline"
-                            className="w-full border-purple-500/20 hover:border-purple-500/50 hover:bg-purple-500/10"
-                            onClick={() => router.push('/dashboard/settings')}
-                        >
-                            Configure API Key
+                            {currentTier === 'pro' ? 'Current Plan' : (loading ? 'Processing...' : 'Upgrade to Pro')}
                         </Button>
                     </div>
                 </div>

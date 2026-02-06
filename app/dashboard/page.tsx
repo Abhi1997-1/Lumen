@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { MetricsCards } from '@/components/dashboard/metrics-cards'
 import { MeetingRow } from '@/components/dashboard/meeting-row'
 import { Button } from '@/components/ui/button'
-import { Plus, Upload, Bot, Search, Bell, ChevronRight } from 'lucide-react'
+import { Plus, Upload, Bot, Search, Bell, ChevronRight, Mic } from 'lucide-react'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { redirect } from 'next/navigation'
@@ -61,12 +61,19 @@ export default async function DashboardPage() {
                             />
                         </div>
                         <ModeToggle />
-                        {/* Import Link button removed */}
-                        <Link href="/dashboard/new">
-                            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
-                                <Plus className="mr-2 h-4 w-4" /> Upload Recording
-                            </Button>
-                        </Link>
+
+                        <div className="flex items-center gap-2">
+                            <Link href="/dashboard/new?tab=upload">
+                                <Button variant="outline" className="shadow-sm">
+                                    <Upload className="mr-2 h-4 w-4" /> Upload
+                                </Button>
+                            </Link>
+                            <Link href="/dashboard/new?tab=record">
+                                <Button className="bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20">
+                                    <Mic className="mr-2 h-4 w-4" /> Record
+                                </Button>
+                            </Link>
+                        </div>
                     </div>
                 </div>
 
