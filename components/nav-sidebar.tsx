@@ -156,7 +156,11 @@ export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobi
                         </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56" align="start" side="right" sideOffset={10}>
-                        <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                        <DropdownMenuLabel>
+                            <Link href="/dashboard/account" className="w-full block hover:underline">
+                                My Account
+                            </Link>
+                        </DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="p-0">
                             <form action="/auth/signout" method="post" className="w-full">

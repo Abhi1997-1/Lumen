@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Mic, Square, Trash2, Globe, Sparkles } from "lucide-react"
+import { Mic, Square, Trash2, Globe, Sparkles, Play, Pause } from "lucide-react"
 import { transcribeChunkAction } from "@/app/actions"
 import {
     Select,
@@ -242,7 +242,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
                     )}
 
                     {/* Controls */}
-                    <div className="flex items-center gap-8">
+                    <div className="flex items-center gap-6">
                         {!isRecording && !audioBlob && (
                             <Button
                                 size="lg"
@@ -254,13 +254,33 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
                         )}
 
                         {isRecording && (
-                            <Button
-                                size="lg"
-                                onClick={stopRecording}
-                                className="h-20 w-20 rounded-full bg-zinc-200 hover:bg-white shadow-[0_0_40px_rgba(255,255,255,0.3)] border-4 border-zinc-800 animate-pulse transition-all hover:scale-105"
-                            >
-                                <Square className="h-8 w-8 text-black fill-black" />
-                            </Button>
+                            <div className="flex items-center gap-4 animate-in slide-in-from-bottom-4 fade-in">
+                                {isPaused ? (
+                                    <Button
+                                        size="icon"
+                                        onClick={resumeRecording}
+                                        className="h-14 w-14 rounded-full bg-white hover:bg-zinc-200 text-black border-4 border-zinc-800"
+                                    >
+                                        <Play className="h-6 w-6 ml-1" />
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        size="icon"
+                                        onClick={pauseRecording}
+                                        className="h-14 w-14 rounded-full bg-zinc-800 hover:bg-zinc-700 text-white border-4 border-zinc-900"
+                                    >
+                                        <Pause className="h-6 w-6" />
+                                    </Button>
+                                )}
+
+                                <Button
+                                    size="lg"
+                                    onClick={stopRecording}
+                                    className="h-20 w-20 rounded-full bg-zinc-200 hover:bg-white shadow-[0_0_40px_rgba(255,255,255,0.3)] border-4 border-zinc-800 animate-pulse transition-all hover:scale-105"
+                                >
+                                    <Square className="h-8 w-8 text-black fill-black" />
+                                </Button>
+                            </div>
                         )}
 
                         {audioBlob && !isRecording && (

@@ -12,7 +12,7 @@ import { toast } from 'sonner'
 import { ChevronLeft, Upload, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import { createMeeting } from '@/app/actions'
-import { ProcessingOverlay } from '@/components/ui/processing-overlay'
+import { PremiumProcessingOverlay } from '@/components/ui/premium-processing-overlay'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AudioRecorder } from "@/components/audio-recorder"
@@ -250,15 +250,12 @@ export default function NewMeetingPage() {
                 </TabsContent>
             </Tabs>
 
-            {/* Minimal Loading Indicator */}
+            {/* Premium Loading Overlay */}
             {loading && (
-                <div className="fixed bottom-6 right-6 z-50 bg-card border border-border shadow-xl rounded-lg p-4 flex items-center gap-4 animate-in slide-in-from-bottom-5">
-                    <RefreshCw className="h-5 w-5 text-indigo-500 animate-spin" />
-                    <div className="flex flex-col">
-                        <span className="font-semibold text-sm">{statusText || "Processing..."}</span>
-                        <span className="text-xs text-muted-foreground">{compressing ? `${progress}% Compressed` : "Please wait"}</span>
-                    </div>
-                </div>
+                <PremiumProcessingOverlay
+                    status={statusText || (compressing ? 'Compressing...' : 'Uploading...')}
+                    progress={compressing ? progress : (statusText.includes('Uploading') ? 45 : 90)}
+                />
             )}
         </div>
     )

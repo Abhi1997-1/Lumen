@@ -3,58 +3,33 @@ import { getSettings } from "./actions"
 import { getIntegrationsStatus } from "./integrations-actions"
 import { SettingsForm } from "./settings-form"
 import { IntegrationsCard } from "@/components/settings/integrations-card"
-import { ProfileForm } from "@/components/settings/profile-form"
-import { PreferencesForm } from "@/components/settings/preferences-form"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { createClient } from "@/lib/supabase/server"
 
 export default async function SettingsPage() {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    // Parallel fetch
-    const [settings, integrationsStatus] = await Promise.all([
-        getSettings(),
-        getIntegrationsStatus()
-    ])
+    const settings = await getSettings()
+    const integrationsStatus = await getIntegrationsStatus()
 
     return (
-        <div className="space-y-6">
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">My Account</h1>
+        <div className="space-y-6 max-w-4xl">
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">Usage & Integrations</h1>
+                <p className="text-muted-foreground">Manage your API connections and system configurations.</p>
+            </div>
 
-            <Tabs defaultValue="profile" className="space-y-4">
-                <TabsList>
-                    <TabsTrigger value="profile">Profile</TabsTrigger>
-                    <TabsTrigger value="preferences">Preferences</TabsTrigger>
-                    <TabsTrigger value="api">API & Keys</TabsTrigger>
-                </TabsList>
+            <div className="grid gap-6">
+                <Card className="bg-card border-border">
+                    <CardHeader>
+                        <CardTitle>API Configuration</CardTitle>
+                        <CardDescription>
+                            Manage your external API keys. Your keys are stored encrypted.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <SettingsForm hasKey={settings?.hasKey || false} />
+                    </CardContent>
+                </Card>
 
-                <TabsContent value="profile" className="space-y-4">
-                    <ProfileForm user={user} />
-                </TabsContent>
-
-                <TabsContent value="preferences" className="space-y-4">
-                    <PreferencesForm />
-                </TabsContent>
-
-                <TabsContent value="api" className="space-y-4">
-                    <div className="grid gap-6">
-                        <Card className="bg-card border-border">
-                            <CardHeader>
-                                <CardTitle>API Configuration</CardTitle>
-                                <CardDescription>
-                                    Manage your external API keys. Your keys are stored encrypted.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <SettingsForm hasKey={settings?.hasKey || false} />
-                            </CardContent>
-                        </Card>
-
-                        <IntegrationsCard initialStatus={integrationsStatus} />
-                    </div>
-                </TabsContent>
-            </Tabs>
+                <IntegrationsCard initialStatus={integrationsStatus} />
+            </div>
         </div>
     )
 }
