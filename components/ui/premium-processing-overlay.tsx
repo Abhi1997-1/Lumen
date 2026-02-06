@@ -34,8 +34,8 @@ export function PremiumProcessingOverlay({ status, progress, onCancel }: Premium
                             <Sparkles className="h-5 w-5 text-white" />
                         </div>
                         <div>
-                            <h2 className="font-bold text-lg leading-tight">Premium AI Transcriber</h2>
-                            <p className="text-xs text-muted-foreground">Professional Studio v4.2</p>
+                            <h2 className="font-bold text-lg leading-tight">Lumen AI Transcriber</h2>
+                            <p className="text-xs text-muted-foreground">Lumen Studio v1.0</p>
                         </div>
                     </div>
                 </div>
@@ -138,24 +138,7 @@ export function PremiumProcessingOverlay({ status, progress, onCancel }: Premium
                         <span className="text-sm font-semibold">Live Preview</span>
                         <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-bold uppercase">Real-Time</span>
                     </div>
-                    <div className="flex-1 p-6 space-y-6 overflow-hidden relative">
-                        {/* Skeleton lines replicating text generation */}
-                        <div className="space-y-3 animate-pulse">
-                            <div className="h-2 bg-muted rounded w-3/4" />
-                            <div className="h-2 bg-muted rounded w-1/2" />
-                        </div>
-                        <div className="space-y-3 animate-pulse delay-100">
-                            <div className="h-2 bg-muted rounded w-full" />
-                            <div className="h-2 bg-muted rounded w-5/6" />
-                            <div className="h-2 bg-muted rounded w-4/6" />
-                        </div>
-                        <div className="space-y-3 animate-pulse delay-200">
-                            <div className="h-2 bg-muted rounded w-2/3" />
-                        </div>
-
-                        {/* Fade out bottom */}
-                        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-card to-transparent" />
-                    </div>
+                    <LivePreviewLog />
                 </div>
 
                 {onCancel && (
