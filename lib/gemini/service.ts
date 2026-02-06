@@ -7,97 +7,128 @@ import path from 'path';
 import os from 'os';
 
 export async function processMeetingWithGemini(userId: string, storagePath: string) {
-    // 1. Get User Key
-    const supabase = await createAdminClient();
-    const { data: settings } = await supabase.from('user_settings').select('gemini_api_key').eq('user_id', userId).single();
-
-    let apiKey = '';
-    if (settings?.gemini_api_key) {
-        apiKey = decrypt(settings.gemini_api_key);
-    } else if (process.env.GEMINI_API_KEY) {
-        apiKey = process.env.GEMINI_API_KEY;
-    } else {
-        throw new Error("Gemini API Key not found. Please add it in Settings.");
-    }
-
-    // 2. Download File from Supabase to Temp
-    const { data: fileData, error } = await supabase.storage.from('meetings').download(storagePath);
-    if (error) throw error;
-
-    const buffer = Buffer.from(await fileData.arrayBuffer());
-    const tempFilePath = path.join(os.tmpdir(), `upload-${Date.now()}.mp3`);
-    fs.writeFileSync(tempFilePath, buffer);
-
+    console.log("🚀 START: processMeetingWithGemini", { userId, storagePath });
     try {
-        // 3. Upload to Gemini
-        const fileManager = new GoogleAIFileManager(apiKey);
-        const uploadResponse = await fileManager.uploadFile(tempFilePath, {
-            mimeType: fileData.type || "audio/mp3",
-            displayName: "Meeting Audio",
-        });
+        // 1. Get User Key
+        console.log("1. Initializing Admin Client...");
+        const supabase = await createAdminClient();
 
-        // 3.5 Wait for file to be active
-        let file = await fileManager.getFile(uploadResponse.file.name);
-        while (file.state === "PROCESSING") {
-            // Sleep for 2 seconds
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-            file = await fileManager.getFile(uploadResponse.file.name);
+        console.log("1a. Fetching User Settings...");
+        const { data: settings, error: settingsError } = await supabase.from('user_settings').select('gemini_api_key').eq('user_id', userId).single();
+
+        if (settingsError) {
+            console.error("❌ Error fetching settings:", settingsError);
+            throw new Error(`Failed to fetch settings: ${settingsError.message}`);
         }
 
-        if (file.state === "FAILED") {
-            throw new Error("Video processing failed.");
+        let apiKey = '';
+        if (settings?.gemini_api_key) {
+            console.log("1b. Found Custom API Key, decrypting...");
+            apiKey = decrypt(settings.gemini_api_key);
+        } else if (process.env.GEMINI_API_KEY) {
+            console.log("1b. Using System API Key...");
+            apiKey = process.env.GEMINI_API_KEY;
+        } else {
+            console.error("❌ No API Key found!");
+            throw new Error("Gemini API Key not found. Please add it in Settings.");
         }
 
-        // 4. Generate Content
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({
-            model: "gemini-flash-latest",
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: SchemaType.OBJECT,
-                    properties: {
-                        transcript: { type: SchemaType.STRING },
-                        summary: { type: SchemaType.STRING },
-                        action_items: {
-                            type: SchemaType.ARRAY,
-                            items: { type: SchemaType.STRING }
+        // 2. Download File from Supabase to Temp
+        console.log("2. Downloading file from Storage...");
+        const { data: fileData, error: downloadError } = await supabase.storage.from('meetings').download(storagePath);
+        if (downloadError) {
+            console.error("❌ Download Error:", downloadError);
+            throw downloadError;
+        }
+
+        console.log("2a. File downloaded, size:", fileData.size);
+        const buffer = Buffer.from(await fileData.arrayBuffer());
+        const tempFilePath = path.join(os.tmpdir(), `upload-${Date.now()}.mp3`);
+        fs.writeFileSync(tempFilePath, buffer);
+        console.log("2b. Saved to temp path:", tempFilePath);
+
+        try {
+            // 3. Upload to Gemini
+            console.log("3. Uploading to Gemini FileManager...");
+            const fileManager = new GoogleAIFileManager(apiKey);
+            const uploadResponse = await fileManager.uploadFile(tempFilePath, {
+                mimeType: fileData.type || "audio/mp3",
+                displayName: "Meeting Audio",
+            });
+            console.log("3a. Upload response:", uploadResponse.file.name);
+
+            // 3.5 Wait for file to be active
+            console.log("3b. Waiting for processing...");
+            let file = await fileManager.getFile(uploadResponse.file.name);
+            while (file.state === "PROCESSING") {
+                console.log("... still processing ...");
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+                file = await fileManager.getFile(uploadResponse.file.name);
+            }
+
+            if (file.state === "FAILED") {
+                console.error("❌ Gemini File Processing FAILED");
+                throw new Error("Video processing failed.");
+            }
+            console.log("3c. File Ready!", file.state);
+
+            // 4. Generate Content
+            console.log("4. Generating Content with Gemini...");
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({
+                model: "gemini-flash-latest",
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: SchemaType.OBJECT,
+                        properties: {
+                            transcript: { type: SchemaType.STRING },
+                            summary: { type: SchemaType.STRING },
+                            action_items: {
+                                type: SchemaType.ARRAY,
+                                items: { type: SchemaType.STRING }
+                            }
                         }
                     }
                 }
-            }
-        });
+            });
 
-        const prompt = "Analyze this audio transcript. 1) Provide a verbatim transcript properly formatted with 'Speaker X:' labels. 2) Provide a comprehensive 'Executive Summary' capturing the key discussion points and decisions. 3) List all 'action_items' clearly. IMPORTANT: Ensure the Output matches the JSON schema exactly. If silence/no speech, return empty fields.";
+            const prompt = "Analyze this audio transcript. 1) Provide a verbatim transcript properly formatted with 'Speaker X:' labels. 2) Provide a comprehensive 'Executive Summary' capturing the key discussion points and decisions. 3) List all 'action_items' clearly. IMPORTANT: Ensure the Output matches the JSON schema exactly. If silence/no speech, return empty fields.";
 
-        const result = await model.generateContent([
-            {
-                fileData: {
-                    mimeType: uploadResponse.file.mimeType,
-                    fileUri: uploadResponse.file.uri
+            const result = await model.generateContent([
+                {
+                    fileData: {
+                        mimeType: uploadResponse.file.mimeType,
+                        fileUri: uploadResponse.file.uri
+                    }
+                },
+                { text: prompt }
+            ]);
+
+            console.log("5. Content Generated! Parsing response...");
+            const responseText = result.response.text();
+            const usage = result.response.usageMetadata;
+
+            const parsedResponse = JSON.parse(responseText);
+
+            return {
+                ...parsedResponse,
+                usage: {
+                    input_tokens: usage?.promptTokenCount || 0,
+                    output_tokens: usage?.candidatesTokenCount || 0,
+                    total_tokens: usage?.totalTokenCount || 0
                 }
-            },
-            { text: prompt }
-        ]);
+            };
 
-        const responseText = result.response.text();
-        const usage = result.response.usageMetadata;
-
-        const parsedResponse = JSON.parse(responseText);
-
-        return {
-            ...parsedResponse,
-            usage: {
-                input_tokens: usage?.promptTokenCount || 0,
-                output_tokens: usage?.candidatesTokenCount || 0,
-                total_tokens: usage?.totalTokenCount || 0
+        } finally {
+            if (fs.existsSync(tempFilePath)) {
+                fs.unlinkSync(tempFilePath);
+                console.log("Cleanup: Temp file removed");
             }
-        };
-
-    } finally {
-        if (fs.existsSync(tempFilePath)) {
-            fs.unlinkSync(tempFilePath);
         }
+    } catch (e) {
+        console.error("❌ FATAL ERROR in processMeetingWithGemini:", e);
+        throw e;
     }
 }
 

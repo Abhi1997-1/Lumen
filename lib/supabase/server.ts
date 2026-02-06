@@ -29,6 +29,11 @@ export async function createClient() {
 }
 // ADMIN Client (Bypasses RLS) - Use ONLY for background tasks
 export async function createAdminClient() {
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        console.error("❌ MISSING SUPABASE_SERVICE_ROLE_KEY environment variable!");
+        throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
+    }
+
     return createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!,
