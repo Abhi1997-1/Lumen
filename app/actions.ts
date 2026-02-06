@@ -76,7 +76,11 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
         })
         .catch(async (e) => {
             console.error("Async processing failed:", e);
-            await supabase.from('meetings').update({ status: 'failed' }).eq('id', meeting.id)
+            const errorMessage = e instanceof Error ? e.message : "Unknown error";
+            await supabase.from('meetings').update({
+                status: 'failed',
+                summary: `Processing Error: ${errorMessage}`
+            }).eq('id', meeting.id)
         })
 
     return { success: true, meetingId: meeting.id }
@@ -104,9 +108,13 @@ export async function retryProcessing(meetingId: string) {
             }).eq('id', meetingId);
         })
         .catch(async (e) => {
-            console.error("Retry failed:", e);
-            await supabase.from('meetings').update({ status: 'failed' }).eq('id', meetingId);
-        });
+            console.error("Async processing failed:", e);
+            const errorMessage = e instanceof Error ? e.message : "Unknown error";
+            await supabase.from('meetings').update({
+                status: 'failed',
+                summary: `Processing Error: ${errorMessage}`
+            }).eq('id', meeting.id)
+        })
 
     revalidatePath(`/dashboard/${meetingId}`);
     return { success: true };
