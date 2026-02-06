@@ -101,10 +101,11 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
                 stream.getTracks().forEach(track => track.stop())
             }
 
-            // 5s slices for live transcription
-            mediaRecorder.start(5000)
+            // 1s slices for faster live transcription updates
+            mediaRecorder.start(1000)
 
             setIsRecording(true)
+            setIsPaused(false)
             setDuration(0)
             setAudioBlob(null)
 
@@ -117,6 +118,63 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         } catch (err) {
             console.error("Error accessing microphone:", err)
             alert("Could not access microphone. Please ensure permissions are granted.")
+        }
+    }
+
+    const pauseRecording = () => {
+        if (mediaRecorderRef.current && isRecording && !isPaused) {
+            mediaRecorderRef.current.pause();
+            setIsPaused(true);
+            if (timerRef.current) clearInterval(timerRef.current);
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
+        }
+    }
+
+    const resumeRecording = () => {
+        if (mediaRecorderRef.current && isRecording && isPaused) {
+            mediaRecorderRef.current.resume();
+            setIsPaused(false);
+            timerRef.current = setInterval(() => {
+                setDuration(prev => prev + 1)
+            }, 1000);
+
+            // Restart visualizer (simple re-attach if context is alive)
+            if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+                audioContextRef.current.resume();
+            }
+            // Trigger draw loop again
+            const draw = () => {
+                animationRef.current = requestAnimationFrame(draw)
+                if (analyserRef.current && canvasRef.current) {
+                    const bufferLength = analyserRef.current.frequencyBinCount
+                    const dataArray = new Uint8Array(bufferLength)
+                    analyserRef.current.getByteFrequencyData(dataArray)
+                    const ctx = canvasRef.current.getContext('2d')
+                    if (ctx) {
+                        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+
+                        const width = canvasRef.current.width;
+                        const height = canvasRef.current.height;
+                        const barWidth = (width / bufferLength) * 2.5;
+                        let x = 0;
+
+                        for (let i = 0; i < bufferLength; i++) {
+                            const v = dataArray[i] / 255.0;
+                            const barHeight = v * height * 0.8;
+                            const r = 100 + (v * 155);
+                            const g = 50 + (v * 50);
+                            const b = 255;
+                            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${v + 0.2})`;
+                            const y = (height - barHeight) / 2;
+                            ctx.beginPath();
+                            ctx.roundRect(x, y, barWidth - 1, barHeight, 5);
+                            ctx.fill();
+                            x += barWidth + 1;
+                        }
+                    }
+                }
+            }
+            draw();
         }
     }
 
