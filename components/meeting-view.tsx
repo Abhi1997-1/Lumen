@@ -386,6 +386,26 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                                     {meeting.status === 'failed' ? "Processing failed. Please try re-uploading." : "Transcription missing. The audio may be corrupt or too short."}
                                 </p>
                             </div>
+                            <div className="ml-auto">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20"
+                                    onClick={async () => {
+                                        const { retryProcessing } = await import("@/app/actions");
+                                        const toastId = toast.loading("Retrying...");
+                                        const res = await retryProcessing(meeting.id);
+                                        if (res.success) {
+                                            toast.success("Retry started", { id: toastId });
+                                            router.refresh();
+                                        } else {
+                                            toast.error("Retry failed", { id: toastId });
+                                        }
+                                    }}
+                                >
+                                    Retry Processing
+                                </Button>
+                            </div>
                         </div>
                     )}
 
