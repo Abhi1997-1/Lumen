@@ -1,6 +1,7 @@
 'use server'
 
-import { createClient } from "@/lib/supabase/server"
+import { createClient as createServerClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import { AIFactory } from "@/lib/ai/factory"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
@@ -40,7 +41,7 @@ const MODEL_CREDIT_COSTS: Record<string, number> = {
 }
 
 export async function createMeeting(storagePath: string, meetingTitle: string = '', durationSeconds: number = 0, providerOverride?: string, modelOverride?: string) {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
@@ -156,7 +157,7 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
             }
         } catch (e: any) {
             console.error("Async processing failed:", e);
-            const supabaseAdmin = await createClient();
+            const supabaseAdmin = await createServerClient();
             await supabaseAdmin.from('meetings').update({
                 status: 'failed',
                 summary: `Processing Error: ${e.message}`
@@ -168,7 +169,7 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
 }
 
 export async function togglePreferOwnKey(enabled: boolean) {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
@@ -183,7 +184,7 @@ export async function togglePreferOwnKey(enabled: boolean) {
 }
 
 export async function retryProcessing(meetingId: string) {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
@@ -234,13 +235,13 @@ export async function retryProcessing(meetingId: string) {
 }
 
 export async function getMeetingStatus(meetingId: string) {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: meeting } = await supabase.from('meetings').select('status, transcript, summary').eq('id', meetingId).single()
     return meeting ? { status: meeting.status, hasTranscript: !!meeting.transcript } : null
 }
 
 export async function updateMeetingActionItems(meetingId: string, items: string[]) {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { error } = await supabase
         .from('meetings')
         .update({ action_items: items })
@@ -252,7 +253,7 @@ export async function updateMeetingActionItems(meetingId: string, items: string[
 }
 
 export async function createNote(title: string, content: string) {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
@@ -273,7 +274,7 @@ export async function createNote(title: string, content: string) {
 }
 
 export async function translateTranscript(text: string, targetLanguage: string) {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
@@ -287,7 +288,7 @@ export async function translateTranscript(text: string, targetLanguage: string) 
 }
 
 export async function askAI(context: string, question: string) {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
@@ -317,7 +318,7 @@ export async function askAI(context: string, question: string) {
 }
 
 export async function translateMeeting(meetingId: string, targetLanguage: string) {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
@@ -346,7 +347,7 @@ export async function translateMeeting(meetingId: string, targetLanguage: string
 }
 
 export async function askFolderAI(folderId: string, question: string) {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
@@ -400,7 +401,7 @@ Action Items: ${Array.isArray(m.action_items) ? m.action_items.join(', ') : ''}
 // --- QUOTA & SUBSCRIPTION ACTIONS ---
 
 export async function getMonthlyUsage() {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, used: 0, limit: 0, tier: 'free' }
 
@@ -450,7 +451,7 @@ export async function getMonthlyUsage() {
 }
 
 export async function upgradeTier(newTier: 'pro' | 'free') {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
@@ -490,7 +491,7 @@ export async function upgradeTier(newTier: 'pro' | 'free') {
 }
 
 export async function purchaseCredits(credits: number, price: number, packId: string) {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
@@ -530,12 +531,19 @@ export async function purchaseCredits(credits: number, price: number, packId: st
 }
 
 export async function getCredits() {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { credits: 0, tier: 'free', hasApiKey: false }
 
     try {
-        const { data: settings } = await supabase
+        // Use Admin Client to ensure we can read settings (including is_admin) regardless of RLS
+        // This fixes the issue where the user has admin access but can't see the link
+        const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+
+        const { data: settings } = await supabaseAdmin
             .from('user_settings')
             .select('credits_remaining, tier, gemini_api_key, credits_reset_at, prefer_own_key, is_admin')
             .eq('user_id', user.id)
@@ -556,7 +564,7 @@ export async function getCredits() {
 }
 
 export async function deductCredits(amount: number, meetingId: string, model: string) {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
@@ -613,7 +621,7 @@ export async function deductCredits(amount: number, meetingId: string, model: st
 }
 
 export async function updateProfile(formData: FormData) {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
@@ -637,7 +645,7 @@ export async function updateProfile(formData: FormData) {
 
 
 export async function transcribeChunkAction(formData: FormData) {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, text: "" }
 
@@ -674,7 +682,7 @@ export async function transcribeChunkAction(formData: FormData) {
 }
 
 export async function saveTranslatedMeeting(meetingId: string, translatedData: any) {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
@@ -696,7 +704,7 @@ export async function saveTranslatedMeeting(meetingId: string, translatedData: a
 }
 
 export async function deleteUserAccount() {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
