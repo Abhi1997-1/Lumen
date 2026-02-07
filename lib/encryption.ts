@@ -1,4 +1,4 @@
-import 'server-only'
+
 import crypto from 'crypto'
 
 const ALGORITHM = 'aes-256-cbc'
@@ -19,7 +19,7 @@ export function encrypt(text: string) {
     return iv.toString('hex') + ':' + encrypted;
 }
 
-export function decrypt(text: string) {
+export function decryptText(text: string) {
     if (!text) return text;
     const textParts = text.split(':');
     const ivPart = textParts.shift();

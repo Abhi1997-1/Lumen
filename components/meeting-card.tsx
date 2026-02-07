@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Calendar, Clock, ChevronRight } from 'lucide-react'
+import { ClientDate } from '@/components/ui/client-date'
 
 interface MeetingCardProps {
     meeting: {
@@ -12,15 +13,7 @@ interface MeetingCardProps {
 }
 
 export function MeetingCard({ meeting }: MeetingCardProps) {
-    const date = new Date(meeting.created_at).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-    })
-    const time = new Date(meeting.created_at).toLocaleTimeString(undefined, {
-        hour: '2-digit',
-        minute: '2-digit',
-    })
+
 
     return (
         <Link href={`/dashboard/${meeting.id}`} className="block transition-transform hover:scale-[1.01]">
@@ -30,11 +23,11 @@ export function MeetingCard({ meeting }: MeetingCardProps) {
                     <CardDescription className="flex items-center gap-2 text-xs">
                         <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            {date}
+                            <ClientDate date={meeting.created_at} mode="date" />
                         </span>
                         <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {time}
+                            <ClientDate date={meeting.created_at} mode="time" />
                         </span>
                     </CardDescription>
                 </CardHeader>

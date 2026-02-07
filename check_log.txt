@@ -1,0 +1,5 @@
+app/actions.ts(65,92): error TS2349: This expression is not callable.
+  Type 'String' has no call signatures.
+app/dashboard/settings/actions.ts(86,17): error TS2339: Property 'decrypt' does not exist on type 'typeof import("C:/Users/patil/Desktop/Back IMU project/Transcript/lib/encryption")'.
+components/usage-card.tsx(109,46): error TS2304: Cannot find name 'percentage'.
+scripts/test-admin.ts(3,24): error TS2307: Cannot find module 'dotenv' or its corresponding type declarations.

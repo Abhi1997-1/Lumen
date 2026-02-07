@@ -1,0 +1,1 @@
+scripts/test-admin.ts(3,24): error TS2307: Cannot find module 'dotenv' or its corresponding type declarations.

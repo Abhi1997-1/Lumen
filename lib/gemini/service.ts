@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { GoogleAIFileManager } from "@google/generative-ai/server";
-import { decrypt } from "@/lib/crypto";
+import { decryptText } from "@/lib/encryption";
 import { createAdminClient } from "@/lib/supabase/server";
 import fs from 'fs';
 import path from 'path';
@@ -24,7 +24,7 @@ export async function processMeetingWithGemini(userId: string, storagePath: stri
         let apiKey = '';
         if (settings?.gemini_api_key) {
             console.log("1b. Found Custom API Key, decrypting...");
-            apiKey = decrypt(settings.gemini_api_key);
+            apiKey = decryptText(settings.gemini_api_key);
         } else if (process.env.GEMINI_API_KEY) {
             console.log("1b. Using System API Key...");
             apiKey = process.env.GEMINI_API_KEY;
@@ -139,7 +139,7 @@ async function getGeminiModel(userId: string) {
 
     let apiKey = '';
     if (settings?.gemini_api_key) {
-        apiKey = decrypt(settings.gemini_api_key);
+        apiKey = decryptText(settings.gemini_api_key);
     } else if (process.env.GEMINI_API_KEY) {
         apiKey = process.env.GEMINI_API_KEY;
     } else {

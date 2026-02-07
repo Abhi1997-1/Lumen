@@ -2,9 +2,34 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { AIFactory } from "@/lib/ai/factory"
-import { decrypt as decryptString } from "@/lib/crypto"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import crypto from 'crypto'
+
+
+const ALGORITHM = 'aes-256-cbc'
+const IV_LENGTH = 16
+
+// Helper to get key. In prod, this must be 32 bytes.
+function getKey() {
+    const key = process.env.ENCRYPTION_KEY || '12345678901234567890123456789012'; // 32 chars default
+    return Buffer.from(key).subarray(0, 32);
+}
+
+function decryptText(text: string) {
+    if (!text) return text;
+    const textParts = text.split(':');
+    const ivPart = textParts.shift();
+    if (!ivPart) throw new Error('Invalid encrypted text');
+
+    const iv = Buffer.from(ivPart, 'hex');
+    const encryptedText = textParts.join(':');
+    const key = getKey();
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+}
 
 export async function createMeeting(storagePath: string, meetingTitle: string = '', durationSeconds: number = 0) {
     const supabase = await createClient()
@@ -50,7 +75,6 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
     if (error) return { success: false, error: error.message }
 
     // Trigger AI Processing (Fire and forget to avoid timeout)
-    // We fetch settings again to get the decrypted keys (or decrypt them here)
     const { data: allSettings } = await supabase
         .from('user_settings')
         .select('gemini_api_key, groq_api_key, openai_api_key, selected_provider')
@@ -60,25 +84,25 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
     const provider = allSettings?.selected_provider || 'gemini'
     let apiKey = ''
 
-    if (provider === 'groq' && allSettings?.groq_api_key) apiKey = decryptString(allSettings.groq_api_key)
-    if (provider === 'openai' && allSettings?.openai_api_key) apiKey = decryptString(allSettings.openai_api_key)
-        // Gemini uses internal auth or system env if no key provided
+    if (provider === 'groq' && typeof allSettings?.groq_api_key === 'string') apiKey = decryptText(allSettings.groq_api_key);
+    if (provider === 'openai' && typeof allSettings?.openai_api_key === 'string') apiKey = decryptText(allSettings.openai_api_key);
+    // Gemini uses internal auth or system env if no key provided
 
-        // Execute via Factory
-        (async () => {
-            try {
-                const service = AIFactory.getService(provider, apiKey, user.id);
-                await service.process(storagePath, meeting.id);
-            } catch (e) {
-                console.error("Async processing failed:", e);
-                const errorMessage = e instanceof Error ? e.message : "Unknown error";
-                const supabaseAdmin = await createClient();
-                await supabaseAdmin.from('meetings').update({
-                    status: 'failed',
-                    summary: `Processing Error: ${errorMessage}`
-                }).eq('id', meeting.id)
-            }
-        })();
+    // Execute via Factory
+    ; (async () => {
+        try {
+            const service = AIFactory.getService(provider, apiKey, user.id);
+            await service.process(storagePath, meeting.id);
+        } catch (e) {
+            console.error("Async processing failed:", e);
+            const errorMessage = e instanceof Error ? e.message : "Unknown error";
+            const supabaseAdmin = await createClient();
+            await supabaseAdmin.from('meetings').update({
+                status: 'failed',
+                summary: `Processing Error: ${errorMessage}`
+            }).eq('id', meeting.id)
+        }
+    })();
 
     return { success: true, meetingId: meeting.id }
 }
@@ -99,7 +123,6 @@ export async function retryProcessing(meetingId: string) {
         console.log("Retrying meeting:", meetingId, "File:", meeting.audio_url);
 
         // Fetch Settings again
-        const { decrypt } = await import("@/lib/crypto")
         const { data: allSettings } = await supabase
             .from('user_settings')
             .select('gemini_api_key, groq_api_key, openai_api_key, selected_provider')
@@ -108,8 +131,8 @@ export async function retryProcessing(meetingId: string) {
 
         const provider = allSettings?.selected_provider || 'gemini'
         let apiKey = ''
-        if (provider === 'groq' && allSettings?.groq_api_key) apiKey = decryptString(allSettings.groq_api_key)
-        if (provider === 'openai' && allSettings?.openai_api_key) apiKey = decryptString(allSettings.openai_api_key)
+        if (provider === 'groq' && typeof allSettings?.groq_api_key === 'string') apiKey = decryptText(allSettings.groq_api_key)
+        if (provider === 'openai' && typeof allSettings?.openai_api_key === 'string') apiKey = decryptText(allSettings.openai_api_key)
 
         const { AIFactory } = await import("@/lib/ai/factory");
         const service = AIFactory.getService(provider, apiKey, user.id);
@@ -195,7 +218,6 @@ export async function askAI(context: string, question: string) {
 
     try {
         // Fetch Settings for Factory
-        const { decrypt: decryptFn } = await import("@/lib/crypto")
         const { data: allSettings } = await supabase
             .from('user_settings')
             .select('gemini_api_key, groq_api_key, openai_api_key, selected_provider')
@@ -204,8 +226,8 @@ export async function askAI(context: string, question: string) {
 
         const provider = allSettings?.selected_provider || 'gemini'
         let apiKey = ''
-        if (provider === 'groq' && allSettings?.groq_api_key) apiKey = decryptFn(allSettings.groq_api_key)
-        if (provider === 'openai' && allSettings?.openai_api_key) apiKey = decryptFn(allSettings.openai_api_key)
+        if (provider === 'groq' && typeof allSettings?.groq_api_key === 'string') apiKey = decryptText(allSettings.groq_api_key)
+        if (provider === 'openai' && typeof allSettings?.openai_api_key === 'string') apiKey = decryptText(allSettings.openai_api_key)
 
         const { AIFactory } = await import("@/lib/ai/factory");
         const service = AIFactory.getService(provider, apiKey, user.id);
@@ -276,7 +298,6 @@ Action Items: ${Array.isArray(m.action_items) ? m.action_items.join(', ') : ''}
 `).join('\n');
 
         // 2. Fetch Settings for Factory
-        const { decrypt: decryptString } = await import("@/lib/crypto")
         const { data: allSettings } = await supabase
             .from('user_settings')
             .select('gemini_api_key, groq_api_key, openai_api_key, selected_provider')
@@ -285,8 +306,8 @@ Action Items: ${Array.isArray(m.action_items) ? m.action_items.join(', ') : ''}
 
         const provider = allSettings?.selected_provider || 'gemini'
         let apiKey = ''
-        if (provider === 'groq' && allSettings?.groq_api_key) apiKey = decryptString(allSettings.groq_api_key)
-        if (provider === 'openai' && allSettings?.openai_api_key) apiKey = decryptString(allSettings.openai_api_key)
+        if (provider === 'groq' && typeof allSettings?.groq_api_key === 'string') apiKey = decryptText(allSettings.groq_api_key)
+        if (provider === 'openai' && typeof allSettings?.openai_api_key === 'string') apiKey = decryptText(allSettings.openai_api_key)
 
         // 3. Execute via Factory
         const { AIFactory } = await import("@/lib/ai/factory");

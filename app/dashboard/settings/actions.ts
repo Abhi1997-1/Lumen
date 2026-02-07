@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from "@/lib/supabase/server"
-import { encrypt } from "@/lib/crypto"
+import { encrypt, decryptText } from "@/lib/encryption"
 import { revalidatePath } from "next/cache"
 
 export async function getSettings() {
@@ -83,16 +83,16 @@ export async function testConnection(provider: string, apiKeyInput?: string) {
             .eq('user_id', user.id)
             .single()
 
-        const { decrypt } = await import("@/lib/crypto")
+
 
         if (provider === 'gemini' && settings?.gemini_api_key) {
-            apiKey = decrypt(settings.gemini_api_key)
+            apiKey = decryptText(settings.gemini_api_key)
             source = 'personal'
         } else if (provider === 'groq' && settings?.groq_api_key) {
-            apiKey = decrypt(settings.groq_api_key)
+            apiKey = decryptText(settings.groq_api_key)
             source = 'personal'
         } else if (provider === 'openai' && settings?.openai_api_key) {
-            apiKey = decrypt(settings.openai_api_key)
+            apiKey = decryptText(settings.openai_api_key)
             source = 'personal'
         }
     }

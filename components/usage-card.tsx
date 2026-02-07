@@ -36,6 +36,8 @@ export function UsageCard({ usedTokens, limitTokens, tier }: UsageCardProps) {
         return num.toString()
     }
 
+    const percentage = limitTokens > 0 ? Math.min(100, Math.max(0, (usedTokens / limitTokens) * 100)) : 0;
+
     const handleMinimize = () => {
         setIsMinimized(true)
         localStorage.setItem("usage_card_minimized", "true")
