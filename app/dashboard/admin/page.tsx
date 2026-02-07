@@ -28,7 +28,7 @@ export default function AdminDashboardPage() {
 
             const usersRes = await getUsersList(1, search) // Pagination TODO
             if (usersRes.error) throw new Error(usersRes.error)
-            setUsers(usersRes.users)
+            setUsers(usersRes.users || [])
         } catch (err: any) {
             setError(err.message)
         } finally {
