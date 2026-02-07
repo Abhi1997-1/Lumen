@@ -28,13 +28,40 @@ const secondaryNavItems = [
     { name: 'Help', href: '/dashboard/help', icon: HelpCircle },
 ]
 
+// Avatar options matching the settings page
+const AVATAR_OPTIONS: Record<string, { bg: string; emoji: string }> = {
+    'gradient-1': { bg: 'from-violet-500 to-purple-600', emoji: '🚀' },
+    'gradient-2': { bg: 'from-pink-500 to-rose-500', emoji: '🌸' },
+    'gradient-3': { bg: 'from-amber-400 to-orange-500', emoji: '🔥' },
+    'gradient-4': { bg: 'from-emerald-400 to-teal-500', emoji: '🌿' },
+    'gradient-5': { bg: 'from-blue-400 to-indigo-500', emoji: '💎' },
+    'gradient-6': { bg: 'from-fuchsia-500 to-pink-500', emoji: '🦄' },
+    'gradient-7': { bg: 'from-cyan-400 to-blue-500', emoji: '🌊' },
+    'gradient-8': { bg: 'from-yellow-400 to-amber-500', emoji: '⭐' },
+    'gradient-9': { bg: 'from-red-500 to-rose-600', emoji: '❤️' },
+    'gradient-10': { bg: 'from-lime-400 to-green-500', emoji: '🍀' },
+    'gradient-11': { bg: 'from-indigo-500 to-purple-600', emoji: '🔮' },
+    'gradient-12': { bg: 'from-slate-600 to-zinc-700', emoji: '🌙' },
+}
+
+function AvatarEmoji({ avatarId, size = 'md' }: { avatarId: string; size?: 'sm' | 'md' }) {
+    const avatar = AVATAR_OPTIONS[avatarId]
+    if (!avatar) return null
+    const sizeClasses = size === 'sm' ? 'h-8 w-8 text-lg' : 'h-12 w-12 text-2xl'
+    return (
+        <div className={`${sizeClasses} rounded-full bg-gradient-to-br ${avatar.bg} flex items-center justify-center shrink-0 shadow-sm`}>
+            {avatar.emoji}
+        </div>
+    )
+}
+
 interface NavSidebarProps {
     user: any
     collapsed: boolean
     onToggle: () => void
     isMobile?: boolean
     onMobileClose?: () => void
-    usageData?: { used: number, limit: number, tier: string }
+    usageData?: { credits: number, tier: string, hasApiKey: boolean }
 }
 
 export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobileClose, usageData }: NavSidebarProps) {
@@ -134,19 +161,29 @@ export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobi
 
 
             <div className="mt-4 border-t border-[hsl(var(--sidebar-border))] p-2 bg-[hsl(var(--sidebar-bg))]">
-                {/* Usage Card - Only show when expanded or on mobile AND NOT UNLIMITED */}
-                {(!collapsed && usageData && usageData.tier !== 'unlimited') && (
+                {/* Usage Card - Only show when expanded or on mobile */}
+                {(!collapsed && usageData) && (
                     <div className="mb-2 px-2">
-                        <UsageCard usedTokens={usageData.used} limitTokens={usageData.limit} tier={usageData.tier} />
+                        <UsageCard credits={usageData.credits} tier={usageData.tier} hasApiKey={usageData.hasApiKey} />
                     </div>
                 )}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <button className={cn("w-full flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors cursor-pointer group outline-none", collapsed && "justify-center")}>
-                            {/* User Info */}
-                            <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
-                                {user.email?.charAt(0).toUpperCase()}
-                            </div>
+                            {/* User Avatar */}
+                            {user?.user_metadata?.avatar_url ? (
+                                <img
+                                    src={user.user_metadata.avatar_url}
+                                    alt=""
+                                    className="h-8 w-8 rounded-full object-cover shrink-0"
+                                />
+                            ) : user?.user_metadata?.avatar_id ? (
+                                <AvatarEmoji avatarId={user.user_metadata.avatar_id} size="sm" />
+                            ) : (
+                                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                                    {user.email?.charAt(0).toUpperCase()}
+                                </div>
+                            )}
                             {!collapsed && (
                                 <div className="flex flex-col min-w-0 text-left">
                                     <span className="text-sm font-semibold text-foreground truncate">{user?.user_metadata?.full_name || 'User'}</span>
@@ -159,7 +196,7 @@ export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobi
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56" align="start" side="right" sideOffset={10}>
                         <DropdownMenuLabel>
-                            <Link href="/dashboard/account" className="w-full block hover:underline">
+                            <Link href="/dashboard/settings" className="w-full block hover:underline">
                                 My Account
                             </Link>
                         </DropdownMenuLabel>

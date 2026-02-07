@@ -29,6 +29,12 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { format, subDays, isSameDay, startOfMonth, isAfter, parseISO } from 'date-fns'
 import { PaginationControls } from "@/components/dashboard/pagination-controls"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
 
 const ITEMS_PER_PAGE = 5
 
@@ -41,6 +47,7 @@ export default function AnalyticsPage() {
     const [loading, setLoading] = useState(true)
     const [meetings, setMeetings] = useState<any[]>([])
     const [timeRange, setTimeRange] = useState<'7D' | '30D' | 'ALL'>('7D')
+    const [showBreakdown, setShowBreakdown] = useState(false)
 
     // Pagination State
     const currentPage = Number(searchParams.get('page')) || 1
@@ -157,6 +164,52 @@ export default function AnalyticsPage() {
         return meetings.slice(startIndex, startIndex + ITEMS_PER_PAGE)
     }, [meetings, currentPage])
 
+    // Breakdown Stats (filtered by time range)
+    const breakdownStats = useMemo(() => {
+        const now = new Date()
+        let daysToFilter = 7
+        if (timeRange === '30D') daysToFilter = 30
+        if (timeRange === 'ALL') daysToFilter = 9999
+
+        const filteredMeetings = meetings.filter(m => {
+            const mDate = new Date(m.created_at)
+            const diffDays = (now.getTime() - mDate.getTime()) / (1000 * 60 * 60 * 24)
+            return diffDays <= daysToFilter
+        })
+
+        const totalInput = filteredMeetings.reduce((acc, m) => acc + (m.input_tokens || 0), 0)
+        const totalOutput = filteredMeetings.reduce((acc, m) => acc + (m.output_tokens || 0), 0)
+        const inputCost = (totalInput / 1_000_000) * 0.075
+        const outputCost = (totalOutput / 1_000_000) * 0.30
+        const totalCost = inputCost + outputCost
+        const avgCostPerMeeting = filteredMeetings.length > 0 ? totalCost / filteredMeetings.length : 0
+        const avgTokensPerMeeting = filteredMeetings.length > 0 ? (totalInput + totalOutput) / filteredMeetings.length : 0
+        const meetingCount = filteredMeetings.length
+        return { totalInput, totalOutput, inputCost, outputCost, totalCost, avgCostPerMeeting, avgTokensPerMeeting, meetingCount }
+    }, [meetings, timeRange])
+
+    // Export to CSV
+    const exportToCSV = () => {
+        const headers = ['Date', 'Meeting Name', 'Duration', 'Input Tokens', 'Output Tokens', 'Total Tokens', 'Est. Cost']
+        const rows = meetings.map(m => [
+            m.formattedDate,
+            `"${m.title.replace(/"/g, '""')}"`,
+            m.durationStr,
+            m.input_tokens || 0,
+            m.output_tokens || 0,
+            m.tokens,
+            `$${m.cost.toFixed(4)}`
+        ])
+        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+        const blob = new Blob([csv], { type: 'text/csv' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `lumen-analytics-${format(new Date(), 'yyyy-MM-dd')}.csv`
+        a.click()
+        URL.revokeObjectURL(url)
+    }
+
     const formatTokens = (num: number) => {
         if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
         if (num >= 1000) return `${(num / 1000).toFixed(1)}k`
@@ -269,7 +322,7 @@ export default function AnalyticsPage() {
                         <Card className="lg:col-span-2 bg-card border-border">
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <CardTitle className="text-lg font-semibold text-foreground">Token Usage History</CardTitle>
-                                <Button variant="ghost" size="sm" className="text-blue-500 hover:text-blue-400 h-8 gap-2">
+                                <Button variant="ghost" size="sm" className="text-blue-500 hover:text-blue-400 h-8 gap-2" onClick={exportToCSV}>
                                     <Download className="h-3 w-3" /> Export Data
                                 </Button>
                             </CardHeader>
@@ -319,7 +372,7 @@ export default function AnalyticsPage() {
                         {/* Cost Savings Card */}
                         <Card className="bg-card border-border relative overflow-hidden">
                             {/* Background Decoration */}
-                            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent opacity-50" />
+                            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent opacity-50 pointer-events-none" />
 
                             <CardHeader>
                                 <div className="h-10 w-10 rounded-full bg-emerald-500/20 flex items-center justify-center mb-4">
@@ -335,12 +388,8 @@ export default function AnalyticsPage() {
                                     <span className="text-sm text-muted-foreground">Your API Cost</span>
                                     <span className="text-lg font-bold text-foreground">${stats.estCost.toFixed(2)}</span>
                                 </div>
-                                <div className="rounded-lg border border-border bg-muted p-4 flex items-center justify-between opacity-75">
-                                    <span className="text-sm text-muted-foreground">Competitor Premium</span>
-                                    <span className="text-lg font-bold text-muted-foreground line-through decoration-muted-foreground decoration-2">${(stats.totalMeetings * 10).toFixed(2)}</span>
-                                </div>
 
-                                <Button className="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 text-white border-0 shadow-lg shadow-emerald-500/20">
+                                <Button className="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 text-white border-0 shadow-lg shadow-emerald-500/20" onClick={() => setShowBreakdown(true)}>
                                     View Breakdown
                                 </Button>
                             </CardContent>
@@ -355,13 +404,13 @@ export default function AnalyticsPage() {
                         <CardContent className="p-0 mt-4">
                             <div className="overflow-x-auto min-h-[300px]">
                                 <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-y border-border">
+                                    <thead className="sticky top-0 z-10 bg-gradient-to-r from-muted/50 via-muted/30 to-muted/50 border-b-2 border-border/50">
                                         <tr>
-                                            <th className="px-6 py-3 font-medium">Date</th>
-                                            <th className="px-6 py-3 font-medium">Meeting Name</th>
-                                            <th className="px-6 py-3 font-medium">Duration</th>
-                                            <th className="px-6 py-3 font-medium">Tokens Used</th>
-                                            <th className="px-6 py-3 font-medium text-right">Est. Cost</th>
+                                            <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground text-left">Date</th>
+                                            <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground text-left">Meeting Name</th>
+                                            <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground text-left">Duration</th>
+                                            <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground text-left">Tokens Used</th>
+                                            <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground text-right">Est. Cost</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
@@ -406,8 +455,64 @@ export default function AnalyticsPage() {
                         </CardContent>
                     </Card>
 
-                </div>
-            </div>
-        </div>
+                </div >
+            </div >
+
+            {/* Breakdown Modal */}
+            <Dialog open={showBreakdown} onOpenChange={setShowBreakdown}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <PiggyBank className="h-5 w-5 text-emerald-500" />
+                            Cost Breakdown
+                            <Badge variant="outline" className="ml-2 text-xs">
+                                {timeRange === '7D' ? 'Last 7 Days' : timeRange === '30D' ? 'Last 30 Days' : 'All Time'}
+                            </Badge>
+                        </DialogTitle>
+                        <p className="text-sm text-muted-foreground">
+                            Based on {breakdownStats.meetingCount} meeting{breakdownStats.meetingCount !== 1 ? 's' : ''}
+                        </p>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="rounded-lg border bg-muted/50 p-4">
+                                <div className="text-xs text-muted-foreground mb-1">Input Tokens</div>
+                                <div className="text-xl font-bold">{formatTokens(breakdownStats.totalInput)}</div>
+                                <div className="text-xs text-emerald-500">${breakdownStats.inputCost.toFixed(4)}</div>
+                            </div>
+                            <div className="rounded-lg border bg-muted/50 p-4">
+                                <div className="text-xs text-muted-foreground mb-1">Output Tokens</div>
+                                <div className="text-xl font-bold">{formatTokens(breakdownStats.totalOutput)}</div>
+                                <div className="text-xs text-emerald-500">${breakdownStats.outputCost.toFixed(4)}</div>
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm text-muted-foreground">Total Cost</span>
+                                <span className="font-bold text-lg">${stats.estCost.toFixed(4)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm text-muted-foreground">Avg. Cost per Meeting</span>
+                                <span className="font-medium">${breakdownStats.avgCostPerMeeting.toFixed(4)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm text-muted-foreground">Avg. Tokens per Meeting</span>
+                                <span className="font-medium">{formatTokens(breakdownStats.avgTokensPerMeeting)}</span>
+                            </div>
+                        </div>
+
+                        <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-4 mt-4">
+                            <div className="text-sm text-muted-foreground mb-1">Pricing (Gemini 1.5 Flash)</div>
+                            <div className="text-xs text-muted-foreground">
+                                Input: $0.075 / 1M tokens • Output: $0.30 / 1M tokens
+                            </div>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </div >
     )
 }

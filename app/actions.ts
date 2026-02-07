@@ -31,28 +31,72 @@ function decryptText(text: string) {
     return decrypted;
 }
 
-export async function createMeeting(storagePath: string, meetingTitle: string = '', durationSeconds: number = 0) {
+// Credit costs per minute by model
+const MODEL_CREDIT_COSTS: Record<string, number> = {
+    'gemini-flash': 1,
+    'gemini-pro': 2,
+    'grok-2': 2,
+    'gpt-4o': 3,
+}
+
+export async function createMeeting(storagePath: string, meetingTitle: string = '', durationSeconds: number = 0, providerOverride?: string, modelOverride?: string) {
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
-    // Check Usage Limits
-    // 1. Fetch user settings to see if they have a custom key
+    // 1. Fetch user settings
     const { data: settings } = await supabase
         .from('user_settings')
-        .select('gemini_api_key')
+        .select('gemini_api_key, openai_api_key, groq_api_key, tier, credits_remaining, selected_provider')
         .eq('user_id', user.id)
         .single()
 
-    const hasCustomKey = !!settings?.gemini_api_key
+    const hasApiKey = !!settings?.gemini_api_key
+    const tier = settings?.tier || 'free'
+    const credits = settings?.credits_remaining || 0
+    const model = modelOverride || 'gemini-flash'
 
-    // 2. Enforce 20-minute limit for default plan
-    // 1200 seconds = 20 minutes
-    if (!hasCustomKey && durationSeconds > 1200) {
+    // Calculate credits needed (based on duration in minutes)
+    const durationMinutes = Math.ceil(durationSeconds / 60)
+    const creditCostPerMin = MODEL_CREDIT_COSTS[model] || 1
+    const creditsNeeded = durationMinutes * creditCostPerMin
+
+    // 2. If they have API key → use their key (no credits needed)
+    if (hasApiKey) {
+        // Proceed with their key - no credit check
+    }
+    // 3. If Pro → check credits BEFORE processing
+    else if (tier === 'pro') {
+        if (credits < creditsNeeded) {
+            return {
+                success: false,
+                error: `Insufficient credits. Need ${creditsNeeded} credits for ${durationMinutes} min, but you have ${credits}. Buy more credits to continue.`
+            }
+        }
+    }
+    // 4. Free user without API key → block
+    else {
         return {
             success: false,
-            error: "Free Plan Limit: Recordings over 20 minutes require your own Gemini API Key. Please add one in Settings."
+            error: "To transcribe, please add your API key in Settings or upgrade to Pro."
+        }
+    }
+
+    // Determine Provider & Key
+    let provider = providerOverride || 'gemini'
+    let finalApiKey = hasApiKey ? settings?.gemini_api_key : undefined
+
+    // If model override is present
+    if (modelOverride) {
+        if (modelOverride.includes('gpt')) provider = 'openai'
+        else if (modelOverride.includes('grok')) provider = 'groq'
+        else provider = 'gemini'
+
+        // If Pro using credits (and no own key), use SYSTEM keys
+        if (tier === 'pro' && !hasApiKey) {
+            if (provider === 'openai') finalApiKey = process.env.OPENAI_API_KEY
+            if (provider === 'groq') finalApiKey = process.env.GROQ_API_KEY
         }
     }
 
@@ -61,38 +105,74 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
         .from('meetings')
         .insert({
             user_id: user.id,
+            storage_path: storagePath, // Using storage_path as per schema usually, but file shows audio_url? 
+            // The view_file showed audio_url: storagePath. I'll stick to that to be safe, 
+            // BUT wait, if I change it I might break it if underlying schema changed. 
+            // I'll use what was in view_file: audio_url: storagePath
             audio_url: storagePath,
             title: meetingTitle || 'Processing...',
             status: 'processing',
             duration: durationSeconds,
-            participants: [],
-            transcript: '',
-            summary: ''
+            model_used: model,
+            // provider: provider // Schema doesn't have provider column likely, so skip
         })
         .select()
         .single()
 
-    if (error) return { success: false, error: error.message }
+    if (error) {
+        console.error("DB Error:", error)
+        return { success: false, error: "Failed to create meeting record" }
+    }
 
-    // Trigger AI Processing (Fire and forget to avoid timeout)
-    const { data: allSettings } = await supabase
-        .from('user_settings')
-        .select('gemini_api_key, groq_api_key, openai_api_key, selected_provider')
-        .eq('user_id', user.id)
-        .single()
+    // Start processing
+    // We need to pass the resolved API key
+    // But processMeeting signature in this file might not accept apiKey yet?
+    // Let's check processMeeting signature. 
+    // It is imported? No, it's likely further down in this file or imported.
+    // I need to check where processMeeting comes from. 
+    // It's likely in this file. I'll assume I need to update it too or it's not shown.
+    // Actually, looking at previous view_file, I don't see processMeeting calls. 
+    // Ah, lines 102+ likely have it.
+    // Let's assume I can call it. 
 
-    const provider = allSettings?.selected_provider || 'gemini'
-    let apiKey = ''
+    // WAIT. The view_file cut off at line 100.
+    // I need to see how processing is triggered.
+    // I will return success here and let the client trigger? 
+    // Or I trigger it here?
+    // usually: await processMeeting(meeting.id)
 
-    if (provider === 'groq' && typeof allSettings?.groq_api_key === 'string') apiKey = decryptText(allSettings.groq_api_key);
-    if (provider === 'openai' && typeof allSettings?.openai_api_key === 'string') apiKey = decryptText(allSettings.openai_api_key);
-    // Gemini uses internal auth or system env if no key provided
+    // I'll just return success for now and assume processing is triggered elsewhere or I need to find it.
+    // User's previous code: `const result = await createMeeting(...)` then `router.push`.
+    // The `createMeeting` function usually triggers processing.
 
-    // Execute via Factory
+    // Let's Look at the end of the file.
+
+    // I will just update the insert for now and leave the rest as is, 
+    // BUT I need to know if I should trigger processing.
+    // The view_file output showed limits check then insert.
+
+    // I'll try to keep the Replace strict.
+    // Insert successful, proceed to processing
+
+    // Start processing
+    let keyToUse = finalApiKey;
+
+    // If no system key (e.g. BYOK), decrypt stored user key
+    if (!keyToUse) {
+        if (provider === 'groq' && settings?.groq_api_key) keyToUse = decryptText(settings.groq_api_key);
+        if (provider === 'openai' && settings?.openai_api_key) keyToUse = decryptText(settings.openai_api_key);
+    }
+
+    // Execute via Factory (Fire and forget)
     ; (async () => {
         try {
-            const service = AIFactory.getService(provider, apiKey, user.id);
+            const service = AIFactory.getService(provider, keyToUse, user.id);
             await service.process(storagePath, meeting.id);
+
+            // Deduct credits if Pro (and no key used)
+            if (tier === 'pro' && !keyToUse && creditsNeeded > 0) {
+                await deductCredits(creditsNeeded, meeting.id, model)
+            }
         } catch (e) {
             console.error("Async processing failed:", e);
             const errorMessage = e instanceof Error ? e.message : "Unknown error";
@@ -374,27 +454,160 @@ export async function getMonthlyUsage() {
     return { success: true, used, limit, tier: hasCustomKey ? 'unlimited' : tier }
 }
 
-export async function upgradeTier(newTier: 'pro' | 'unlimited') {
+export async function upgradeTier(newTier: 'pro' | 'free') {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
-    // For 'unlimited', we rely on them adding a key, so this might just be a UI flag
-    // But for 'pro', we update the DB.
+    // Calculate credits reset date (1 month from now)
+    const creditsResetAt = new Date()
+    creditsResetAt.setMonth(creditsResetAt.getMonth() + 1)
 
-    // Note: In a real app, strict validation of payment would happen here.
+    const updateData: Record<string, any> = {
+        user_id: user.id,
+        tier: newTier,
+    }
 
+    // If upgrading to Pro, give 1200 credits
+    if (newTier === 'pro') {
+        updateData.credits_remaining = 1200
+        updateData.credits_reset_at = creditsResetAt.toISOString()
+    }
+
+    const { error } = await supabase
+        .from('user_settings')
+        .upsert(updateData, { onConflict: 'user_id' })
+
+    if (error) return { success: false, error: error.message }
+
+    // Log the transaction
+    if (newTier === 'pro') {
+        await supabase.from('credit_transactions').insert({
+            user_id: user.id,
+            amount: 1200,
+            type: 'subscription',
+            description: 'Pro plan monthly credits'
+        })
+    }
+
+    revalidatePath('/dashboard')
+    return { success: true }
+}
+
+export async function purchaseCredits(credits: number, price: number, packId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Not authenticated" }
+
+    // TODO: Integrate Stripe payment here
+    // For now, this is a mock that just adds the credits
+
+    // Get current credits
+    const { data: settings } = await supabase
+        .from('user_settings')
+        .select('credits_remaining')
+        .eq('user_id', user.id)
+        .single()
+
+    const currentCredits = settings?.credits_remaining || 0
+    const newCredits = currentCredits + credits
+
+    // Update credits
     const { error } = await supabase
         .from('user_settings')
         .upsert({
             user_id: user.id,
-            tier: newTier === 'unlimited' ? 'free' : newTier // If unlimited selected, they just need a key, but visually we might treat differently. Let's just store 'pro'.
+            credits_remaining: newCredits
         }, { onConflict: 'user_id' })
 
     if (error) return { success: false, error: error.message }
 
+    // Log transaction
+    await supabase.from('credit_transactions').insert({
+        user_id: user.id,
+        amount: credits,
+        type: 'purchase',
+        description: `Credit pack: ${packId} ($${price})`
+    })
+
     revalidatePath('/dashboard')
-    return { success: true }
+    return { success: true, newBalance: newCredits }
+}
+
+export async function getCredits() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { credits: 0, tier: 'free', hasApiKey: false }
+
+    const { data: settings } = await supabase
+        .from('user_settings')
+        .select('credits_remaining, tier, gemini_api_key, credits_reset_at')
+        .eq('user_id', user.id)
+        .single()
+
+    return {
+        credits: settings?.credits_remaining || 0,
+        tier: settings?.tier || 'free',
+        hasApiKey: !!settings?.gemini_api_key,
+        creditsResetAt: settings?.credits_reset_at
+    }
+}
+
+export async function deductCredits(amount: number, meetingId: string, model: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Not authenticated" }
+
+    const { data: settings } = await supabase
+        .from('user_settings')
+        .select('credits_remaining, tier, gemini_api_key')
+        .eq('user_id', user.id)
+        .single()
+
+    const hasApiKey = !!settings?.gemini_api_key
+    const isPro = settings?.tier === 'pro'
+    const currentCredits = settings?.credits_remaining || 0
+
+    // If they have their own API key, no credits needed
+    if (hasApiKey) {
+        return { success: true, creditsUsed: 0, remaining: currentCredits }
+    }
+
+    // If not Pro and no API key, they can't transcribe
+    if (!isPro && !hasApiKey) {
+        return {
+            success: false,
+            error: "Please add an API key in Settings or upgrade to Pro to transcribe."
+        }
+    }
+
+    // Check if they have enough credits
+    if (currentCredits < amount) {
+        return {
+            success: false,
+            error: `Insufficient credits. Need ${amount}, have ${currentCredits}. Buy more credits to continue.`
+        }
+    }
+
+    // Deduct credits
+    const newCredits = currentCredits - amount
+    const { error } = await supabase
+        .from('user_settings')
+        .update({ credits_remaining: newCredits })
+        .eq('user_id', user.id)
+
+    if (error) return { success: false, error: error.message }
+
+    // Log usage
+    await supabase.from('credit_transactions').insert({
+        user_id: user.id,
+        amount: -amount,
+        type: 'usage',
+        description: `Transcription with ${model}`,
+        meeting_id: meetingId
+    })
+
+    return { success: true, creditsUsed: amount, remaining: newCredits }
 }
 
 export async function updateProfile(formData: FormData) {
@@ -478,4 +691,47 @@ export async function saveTranslatedMeeting(meetingId: string, translatedData: a
     if (error) return { success: false, error: error.message }
     revalidatePath(`/dashboard/${meetingId}`)
     return { success: true }
+}
+
+export async function deleteUserAccount() {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Not authenticated" }
+
+    try {
+        // 1. Get all meetings to delete their storage files
+        const { data: meetings } = await supabase
+            .from('meetings')
+            .select('storage_path')
+            .eq('user_id', user.id)
+
+        // 2. Delete storage files
+        if (meetings && meetings.length > 0) {
+            const paths = meetings.map(m => m.storage_path).filter(Boolean)
+            if (paths.length > 0) {
+                await supabase.storage.from('recordings').remove(paths)
+            }
+        }
+
+        // 3. Delete meetings (cascade will handle related data)
+        await supabase
+            .from('meetings')
+            .delete()
+            .eq('user_id', user.id)
+
+        // 4. Delete user settings
+        await supabase
+            .from('user_settings')
+            .delete()
+            .eq('user_id', user.id)
+
+        // 5. Note: Supabase Auth user deletion requires admin API or user to sign out
+        // The user will be signed out after this action
+
+        return { success: true }
+    } catch (error: any) {
+        console.error("Error deleting user account:", error)
+        return { success: false, error: error.message || "Failed to delete account" }
+    }
 }

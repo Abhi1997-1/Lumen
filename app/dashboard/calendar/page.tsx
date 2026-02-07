@@ -31,7 +31,7 @@ export default function CalendarPage() {
     const [selectedDate, setSelectedDate] = useState(new Date())
     const [meetings, setMeetings] = useState<any[]>([])
     const [activeId, setActiveId] = useState<string | null>(null)
-    const [sidebarOpen, setSidebarOpen] = useState(true)
+    const [sidebarOpen, setSidebarOpen] = useState(false)
     const [view, setView] = useState<'month' | 'week' | 'day'>('month')
     const router = useRouter()
     const supabase = createClient()

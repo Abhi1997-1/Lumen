@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,9 @@ import { AudioRecorder } from "@/components/audio-recorder"
 
 import { useSearchParams } from 'next/navigation'
 import { useAudioCompressor } from '@/hooks/use-audio-compressor'
+import { ProviderSelector } from '@/components/provider-selector'
+import { ModelSelector } from '@/components/model-selector'
+import { getProviderStatus } from './actions'
 
 // ...
 
@@ -31,6 +34,16 @@ export default function NewMeetingPage() {
     const [statusText, setStatusText] = useState('')
     const [title, setTitle] = useState('')
     const [file, setFile] = useState<File | null>(null)
+    const [selectedProvider, setSelectedProvider] = useState('gemini')
+    const [selectedModel, setSelectedModel] = useState('gemini-flash')
+    const [tier, setTier] = useState('free')
+
+    useEffect(() => {
+        getProviderStatus().then(status => {
+            if (status.tier) setTier(status.tier)
+            if (status.tier === 'pro') setSelectedModel('gemini-flash')
+        })
+    }, [])
 
     const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -92,7 +105,7 @@ export default function NewMeetingPage() {
             if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`)
 
             setStatusText('Creating meeting entry...')
-            const result = await createMeeting(filePath, title || fileToUpload.name)
+            const result = await createMeeting(filePath, title || fileToUpload.name, 0, selectedProvider, selectedModel)
 
             if (!result.success) throw new Error(result.error)
 
@@ -139,6 +152,14 @@ export default function NewMeetingPage() {
                         onChange={(e) => setTitle(e.target.value)}
                         disabled={loading}
                     />
+                </div>
+
+                <div className="flex items-center justify-between">
+                    {tier === 'pro' ? (
+                        <ModelSelector value={selectedModel} onValueChange={setSelectedModel} disabled={loading} />
+                    ) : (
+                        <ProviderSelector onProviderChange={setSelectedProvider} disabled={loading} />
+                    )}
                 </div>
 
                 <Tabs defaultValue={defaultTab} className="w-full">

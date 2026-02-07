@@ -2,7 +2,7 @@ import { DashboardShell } from '@/components/dashboard-shell'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
-import { getMonthlyUsage } from "@/app/actions"
+import { getCredits } from "@/app/actions"
 
 export default async function DashboardLayout({
     children,
@@ -16,11 +16,12 @@ export default async function DashboardLayout({
         redirect('/login')
     }
 
-    const { used, limit, tier } = await getMonthlyUsage()
+    const { credits, tier, hasApiKey } = await getCredits()
 
     return (
-        <DashboardShell user={user} usageData={{ used: used || 0, limit: limit || 0, tier: tier || 'free' }}>
+        <DashboardShell user={user} usageData={{ credits, tier, hasApiKey }}>
             {children}
         </DashboardShell>
     )
 }
+

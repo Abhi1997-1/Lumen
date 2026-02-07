@@ -329,15 +329,18 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                     </Button>
 
                     <div className="mt-auto pt-6">
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="Ask AI to edit or generate..."
-                                className="w-full bg-background border border-border rounded-lg pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                            />
-                            <Button size="icon" variant="ghost" className="absolute right-1 top-1 h-7 w-7 text-indigo-400 hover:text-indigo-300">
-                                <Sparkles className="h-3 w-3" />
-                            </Button>
+                        <div className="relative group">
+                            <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg blur opacity-30 group-hover:opacity-60 transition duration-300" />
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Ask AI anything about this meeting..."
+                                    className="w-full bg-background border border-indigo-500/30 rounded-lg pl-4 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder:text-muted-foreground/70"
+                                />
+                                <Button size="icon" className="absolute right-1.5 top-1.5 h-8 w-8 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white border-0 shadow-lg shadow-indigo-500/25">
+                                    <Sparkles className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>

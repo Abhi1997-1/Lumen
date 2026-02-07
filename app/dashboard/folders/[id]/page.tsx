@@ -61,6 +61,15 @@ export default async function FolderPage({ params }: { params: Promise<{ id: str
                     <div className="flex-1 overflow-auto custom-scrollbar p-0">
                         {meetings && meetings.length > 0 ? (
                             <table className="w-full text-sm text-left">
+                                <thead className="sticky top-0 z-10 bg-gradient-to-r from-muted/50 via-muted/30 to-muted/50 border-b-2 border-border/50">
+                                    <tr>
+                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground w-[40%]">Meeting Name</th>
+                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground hidden md:table-cell">Date</th>
+                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground hidden md:table-cell text-right">Duration</th>
+                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground hidden md:table-cell">Status</th>
+                                        <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground text-right"></th>
+                                    </tr>
+                                </thead>
                                 <tbody className="divide-y divide-border">
                                     {meetings.map((meeting) => (
                                         <MeetingRow key={meeting.id} meeting={meeting} />

@@ -48,8 +48,8 @@ export function MeetingList({ meetings, query }: MeetingListProps) {
         <div className="flex-1 flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden relative">
             <div className="flex-1 overflow-auto custom-scrollbar">
                 <Table>
-                    <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
-                        <TableRow className="hover:bg-transparent border-b border-border">
+                    <TableHeader className="sticky top-0 z-10">
+                        <TableRow className="hover:bg-transparent border-b-2 border-border/50 bg-gradient-to-r from-muted/50 via-muted/30 to-muted/50">
                             {/* Checkbox Column */}
                             <TableHead className="w-[40px] pl-4 pr-0">
                                 <Checkbox
@@ -58,11 +58,11 @@ export function MeetingList({ meetings, query }: MeetingListProps) {
                                 />
                             </TableHead>
 
-                            <TableHead className="w-[40%] pl-4">Meeting Name</TableHead>
-                            <TableHead className="hidden md:table-cell">Date</TableHead>
-                            <TableHead className="hidden md:table-cell text-right">Duration</TableHead>
-                            <TableHead className="hidden md:table-cell">Participants</TableHead>
-                            <TableHead className="hidden md:table-cell">Status</TableHead>
+                            <TableHead className="w-[40%] pl-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Meeting Name</TableHead>
+                            <TableHead className="hidden md:table-cell text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date</TableHead>
+                            <TableHead className="hidden md:table-cell text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Duration</TableHead>
+                            <TableHead className="hidden md:table-cell text-xs font-semibold uppercase tracking-wider text-muted-foreground">Participants</TableHead>
+                            <TableHead className="hidden md:table-cell text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</TableHead>
                             <TableHead className="text-right pr-6"></TableHead>
                         </TableRow>
                     </TableHeader>
@@ -79,25 +79,28 @@ export function MeetingList({ meetings, query }: MeetingListProps) {
                                 />
                             ))
                         ) : (
-                            <TableRow>
-                                <td colSpan={7} className="h-96 text-center text-muted-foreground text-sm">
-                                    <div className="flex flex-col items-center justify-center gap-2 h-full">
-                                        <div className="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center mb-2">
-                                            <Upload className="h-6 w-6 text-muted-foreground/50" />
+                            <TableRow className="hover:bg-transparent">
+                                <TableCell colSpan={7} className="h-80">
+                                    <div className="flex flex-col items-center justify-center gap-3 py-8">
+                                        <div className="h-16 w-16 rounded-full bg-gradient-to-br from-muted/80 to-muted flex items-center justify-center">
+                                            <Upload className="h-7 w-7 text-muted-foreground/60" />
                                         </div>
-                                        <p>No meetings found.</p>
-                                        <p className="text-xs text-muted-foreground/70">
-                                            {query ? "Try adjusting your search terms." : "Start recording to see sessions here."}
-                                        </p>
+                                        <div className="text-center space-y-1">
+                                            <p className="font-medium text-foreground">No meetings found</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {query ? "Try adjusting your search terms." : "Start recording to see sessions here."}
+                                            </p>
+                                        </div>
                                         {!query && (
-                                            <Link href="/dashboard/new" className="mt-4">
-                                                <Button variant="outline">
+                                            <Link href="/dashboard/new">
+                                                <Button variant="outline" size="sm" className="mt-2">
+                                                    <Upload className="h-4 w-4 mr-2" />
                                                     Record Meeting
                                                 </Button>
                                             </Link>
                                         )}
                                     </div>
-                                </td>
+                                </TableCell>
                             </TableRow>
                         )}
                     </TableBody>
