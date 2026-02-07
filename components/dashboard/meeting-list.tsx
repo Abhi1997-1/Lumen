@@ -75,6 +75,7 @@ export function MeetingList({ meetings, query }: MeetingListProps) {
                                     selectable={true}
                                     checked={selectedIds.includes(meeting.id)}
                                     onCheckedChange={(checked) => toggleSelection(meeting.id, checked)}
+                                    searchQuery={query}
                                 />
                             ))
                         ) : (

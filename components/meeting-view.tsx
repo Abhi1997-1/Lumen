@@ -61,7 +61,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useDebounce } from 'use-debounce';
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 interface MeetingViewProps {
     meeting: any;
@@ -85,6 +85,8 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
     const [isTranslating, setIsTranslating] = useState(false);
     const [translatedData, setTranslatedData] = useState<any>(null);
 
+    const searchParams = useSearchParams()
+
     // New State for Enhancements
     const [title, setTitle] = useState(meeting.title || "");
     const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -93,7 +95,11 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
 
     // Text Size: 'text-sm', 'text-base', 'text-lg'
     const [textSize, setTextSize] = useState("text-base");
-    const [transcriptSearch, setTranscriptSearch] = useState("");
+
+    // Search State
+    const [transcriptSearch, setTranscriptSearch] = useState(searchParams.get('query') || "");
+    const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+    const [totalMatches, setTotalMatches] = useState(0);
 
     // Speaker Renaming
     const [isSpeakerModalOpen, setIsSpeakerModalOpen] = useState(false);
@@ -472,15 +478,51 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
 
                                 <div className="flex items-center gap-2">
                                     {/* Search Input for Transcript */}
-                                    <div className="relative w-48 md:w-64">
-                                        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                                        <Input
-                                            type="search"
-                                            placeholder="Find in transcript..."
-                                            className="pl-8 h-8 text-xs bg-muted/30 border-border"
-                                            value={transcriptSearch}
-                                            onChange={(e) => setTranscriptSearch(e.target.value)}
-                                        />
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative w-48 md:w-64">
+                                            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                                            <Input
+                                                type="search"
+                                                placeholder="Find in transcript..."
+                                                className="pl-8 h-8 text-xs bg-muted/30 border-border"
+                                                value={transcriptSearch}
+                                                onChange={(e) => {
+                                                    setTranscriptSearch(e.target.value);
+                                                    setCurrentMatchIndex(0); // Reset on new search
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        // Go to next match
+                                                        setCurrentMatchIndex(prev => (prev + 1) % totalMatches);
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                        {transcriptSearch && totalMatches > 0 && (
+                                            <div className="flex items-center bg-muted/50 rounded-md border border-border h-8">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-full w-8 rounded-none border-r border-border hover:bg-muted"
+                                                    onClick={() => setCurrentMatchIndex(prev => (prev - 1 + totalMatches) % totalMatches)}
+                                                    title="Previous Match"
+                                                >
+                                                    <ChevronLeft className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <div className="px-3 text-xs font-mono text-muted-foreground min-w-[60px] text-center">
+                                                    {currentMatchIndex + 1} / {totalMatches}
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-full w-8 rounded-none border-l border-border hover:bg-muted"
+                                                    onClick={() => setCurrentMatchIndex(prev => (prev + 1) % totalMatches)}
+                                                    title="Next Match"
+                                                >
+                                                    <ChevronLeft className="h-3.5 w-3.5 rotate-180" />
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Text Size Controls */}
@@ -536,7 +578,12 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
 
                         {/* Transcript Section - NOW INTERACTIVE */}
                         <div className={textSize}>
-                            <TranscriptView originalTranscript={currentMeeting.transcript || ''} searchTerm={transcriptSearch} />
+                            <TranscriptView
+                                originalTranscript={currentMeeting.transcript || ''}
+                                searchTerm={transcriptSearch}
+                                currentMatchIndex={currentMatchIndex}
+                                onMatchesFound={setTotalMatches}
+                            />
                         </div>
 
                     </div>

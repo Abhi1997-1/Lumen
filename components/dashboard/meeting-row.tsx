@@ -33,9 +33,10 @@ interface MeetingRowProps {
     selectable?: boolean
     checked?: boolean | 'indeterminate'
     onCheckedChange?: (checked: boolean | 'indeterminate') => void
+    searchQuery?: string
 }
 
-export function MeetingRow({ meeting, selectable, checked, onCheckedChange }: MeetingRowProps) {
+export function MeetingRow({ meeting, selectable, checked, onCheckedChange, searchQuery }: MeetingRowProps) {
     const status = meeting.status || (meeting.transcript ? "completed" : "processing")
 
     // ... (keep existing statusConfig and currentStatus logic)
@@ -49,7 +50,7 @@ export function MeetingRow({ meeting, selectable, checked, onCheckedChange }: Me
     const currentStatus = statusConfig[status as keyof typeof statusConfig] || statusConfig.processing
 
     // ... (keep formattedDate and duration)
-    const formattedDate = new Date(meeting.created_at).toLocaleDateString(undefined, {
+    const formattedDate = new Date(meeting.created_at).toLocaleDateString("en-US", {
         month: 'short',
         day: 'numeric',
         year: 'numeric'
@@ -97,7 +98,7 @@ export function MeetingRow({ meeting, selectable, checked, onCheckedChange }: Me
                         </div>
 
                         <div className="flex flex-col">
-                            <Link href={`/dashboard/${meeting.id}`} className="block">
+                            <Link href={href} className="flex-1 flex items-center min-w-0">
                                 <span className="font-semibold text-sm text-foreground hover:underline underline-offset-4 decoration-primary/50 block truncate max-w-[200px] sm:max-w-[300px]">
                                     {meeting.title || "Untitled Meeting"}
                                 </span>

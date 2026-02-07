@@ -4,13 +4,16 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { MessageSquare } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 interface TranscriptViewProps {
     originalTranscript: string;
     searchTerm?: string;
+    currentMatchIndex?: number;
+    onMatchesFound?: (count: number) => void;
 }
 
-export function TranscriptView({ originalTranscript, searchTerm = "" }: TranscriptViewProps) {
+export function TranscriptView({ originalTranscript, searchTerm = "", currentMatchIndex, onMatchesFound }: TranscriptViewProps) {
     // Determine if we have content
     const hasContent = originalTranscript && originalTranscript.trim().length > 0;
 
@@ -20,21 +23,57 @@ export function TranscriptView({ originalTranscript, searchTerm = "" }: Transcri
         return `${min}:${sec.toString().padStart(2, '0')}`;
     }
 
-    // Helper to highlight text
+    // Helper to highlight text and track matches
+    // We need a stable way to count matches. 
+    // Ideally, we'd process the whole transcript once to find indices, but doing it render-time with unique IDs is easier for React.
+    // We'll use a global counter ref for the current render cycle? No, that's unsafe.
+    // We'll rely on the parent to manage the "current" index, and we just render all matches with a predictable class/ID.
+    // Actually, to know "which" match is "active", we need to know the total count and order.
+    // We can use `document.querySelectorAll` in an effect to manage scrolling.
+
+    // Let's use a class `transcript-highlight-match` and `transcript-highlight-match-active`.
+
+    useEffect(() => {
+        if (!searchTerm) return;
+
+        // Find all matches in DOM
+        const matches = document.querySelectorAll('.transcript-highlight-match');
+        onMatchesFound?.(matches.length);
+
+        if (currentMatchIndex !== undefined && matches[currentMatchIndex]) {
+            matches[currentMatchIndex].scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }
+    }, [searchTerm, originalTranscript, currentMatchIndex, onMatchesFound]);
+
+    let matchCount = 0; // Reset on render
+
     const highlightText = (text: string) => {
         if (!searchTerm) return text;
-        // Escape special regex characters
         const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const parts = text.split(new RegExp(`(${escapedTerm})`, 'gi'));
+
         return (
             <span>
-                {parts.map((part, i) =>
-                    part.toLowerCase() === searchTerm.toLowerCase() ? (
-                        <span key={i} className="bg-yellow-200 dark:bg-yellow-900/80 text-foreground font-bold px-0.5 rounded shadow-sm ring-1 ring-yellow-500/50">{part}</span>
-                    ) : (
-                        part
-                    )
-                )}
+                {parts.map((part, i) => {
+                    const isMatch = part.toLowerCase() === searchTerm.toLowerCase();
+                    if (isMatch) {
+                        const isCurrent = matchCount === currentMatchIndex;
+                        const element = (
+                            <span
+                                key={i}
+                                className={`transcript-highlight-match ${isCurrent ? 'bg-orange-400 text-white ring-orange-400' : 'bg-yellow-200 dark:bg-yellow-900/80 text-foreground'} font-bold px-0.5 rounded shadow-sm ring-1 ring-yellow-500/50 transition-colors duration-300`}
+                            >
+                                {part}
+                            </span>
+                        );
+                        matchCount++;
+                        return element;
+                    }
+                    return part;
+                })}
             </span>
         );
     };

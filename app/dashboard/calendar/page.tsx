@@ -35,8 +35,10 @@ export default function CalendarPage() {
     const [view, setView] = useState<'month' | 'week' | 'day'>('month')
     const router = useRouter()
     const supabase = createClient()
+    const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
+        setMounted(true)
         const fetchMeetings = async () => {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) return
@@ -58,6 +60,8 @@ export default function CalendarPage() {
         }
         fetchMeetings()
     }, [])
+
+    if (!mounted) return null
 
     const getCalendarRange = () => {
         if (view === 'month') {

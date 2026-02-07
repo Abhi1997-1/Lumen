@@ -97,9 +97,17 @@ export function SettingsForm({ hasKey }: SettingsFormProps) {
                         </span>
                     </Button>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                    Required for meeting transcription and summarization.
-                </p>
+                <div className="flex justify-between items-center text-sm text-muted-foreground">
+                    <p>Required for meeting transcription and summarization.</p>
+                    <a
+                        href="https://console.cloud.google.com/apis/api/generativelanguage.googleapis.com/metrics"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-indigo-500 hover:text-indigo-400 flex items-center gap-1 hover:underline"
+                    >
+                        Check Usage <Zap className="h-3 w-3" />
+                    </a>
+                </div>
             </div>
 
             <div className="flex items-center gap-3">
