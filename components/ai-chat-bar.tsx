@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sparkles, Send, Loader2, Bot } from "lucide-react";
-import { askGemini } from "@/app/actions";
+// askGemini removed, dynamic import used
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +33,8 @@ export function AiChatBar({ context }: AiChatBarProps) {
         setIsLoading(true);
 
         try {
-            const result = await askGemini(context, userQuery);
+            const { askAI } = await import("@/app/actions");
+            const result = await askAI(context, userQuery);
             if (result.success && result.answer) {
                 setMessages(prev => [...prev, { role: 'assistant', content: result.answer }]);
             } else {

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MoreVertical, Eye, Pencil, Trash, FolderInput } from "lucide-react"
 import { TableRow, TableCell } from "@/components/ui/table"
+import { ClientDate } from "@/components/ui/client-date"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -50,11 +51,7 @@ export function MeetingRow({ meeting, selectable, checked, onCheckedChange, sear
     const currentStatus = statusConfig[status as keyof typeof statusConfig] || statusConfig.processing
 
     // ... (keep formattedDate and duration)
-    const formattedDate = new Date(meeting.created_at).toLocaleDateString("en-US", {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-    })
+
 
     const formatDuration = (seconds: number) => {
         if (!seconds) return "--"
@@ -98,7 +95,7 @@ export function MeetingRow({ meeting, selectable, checked, onCheckedChange, sear
                         </div>
 
                         <div className="flex flex-col">
-                            <Link href={href} className="flex-1 flex items-center min-w-0">
+                            <Link href={`/dashboard/${meeting.id}`} className="flex-1 flex items-center min-w-0">
                                 <span className="font-semibold text-sm text-foreground hover:underline underline-offset-4 decoration-primary/50 block truncate max-w-[200px] sm:max-w-[300px]">
                                     {meeting.title || "Untitled Meeting"}
                                 </span>
@@ -110,7 +107,7 @@ export function MeetingRow({ meeting, selectable, checked, onCheckedChange, sear
 
                 {/* Cell 2: Date */}
                 <TableCell className="hidden md:table-cell text-muted-foreground whitespace-nowrap">
-                    {formattedDate}
+                    <ClientDate date={meeting.created_at} />
                 </TableCell>
 
                 {/* Cell 3: Duration */}

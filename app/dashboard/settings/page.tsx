@@ -6,6 +6,13 @@ import { IntegrationsCard } from "@/components/settings/integrations-card"
 
 export default async function SettingsPage() {
     const settings = await getSettings()
+    // Default fallback if settings is null/undefined (though getSettings handles auth check return)
+    const validSettings = settings || {
+        hasGeminiKey: false,
+        hasOpenAIKey: false,
+        hasGroqKey: false,
+        selectedProvider: 'gemini'
+    }
     const integrationsStatus = await getIntegrationsStatus()
 
     return (
@@ -24,7 +31,7 @@ export default async function SettingsPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <SettingsForm hasKey={settings?.hasKey || false} />
+                        <SettingsForm settings={validSettings} />
                     </CardContent>
                 </Card>
 

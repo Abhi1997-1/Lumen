@@ -35,6 +35,8 @@ import {
     ArrowLeft,
     Search
 } from 'lucide-react'
+import { ClientDate } from "@/components/ui/client-date"
+
 import { Checkbox } from "@/components/ui/checkbox"
 import {
     Select,
@@ -97,9 +99,17 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
     const [textSize, setTextSize] = useState("text-base");
 
     // Search State
-    const [transcriptSearch, setTranscriptSearch] = useState(searchParams.get('query') || "");
+    // Initialize empty to prevent hydration mismatch, then sync with URL
+    const [transcriptSearch, setTranscriptSearch] = useState("");
     const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
     const [totalMatches, setTotalMatches] = useState(0);
+
+    useEffect(() => {
+        const query = searchParams.get('query');
+        if (query) {
+            setTranscriptSearch(query);
+        }
+    }, [searchParams]);
 
     // Speaker Renaming
     const [isSpeakerModalOpen, setIsSpeakerModalOpen] = useState(false);
@@ -708,12 +718,4 @@ function ExportIcon(props: any) {
     return <Download {...props} />
 }
 
-function ClientDate({ date, mode }: { date: string, mode: 'date' | 'time' }) {
-    const [mounted, setMounted] = useState(false)
-    useEffect(() => setMounted(true), [])
 
-    if (!mounted) return <span className="opacity-0">...</span> // Placeholder to avoid layout shift
-
-    const d = new Date(date)
-    return <>{mode === 'date' ? d.toLocaleDateString() : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</>
-}

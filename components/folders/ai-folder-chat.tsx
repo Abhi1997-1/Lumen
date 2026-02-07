@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sparkles, Send, Loader2, Bot, FolderOpen } from "lucide-react";
-import { askFolderGemini } from "@/app/actions";
+// askFolderGemini removed
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +33,8 @@ export function AiFolderChat({ folderId, folderName }: AiFolderChatProps) {
         setIsLoading(true);
 
         try {
-            const result = await askFolderGemini(folderId, userQuery);
+            const { askFolderAI } = await import("@/app/actions");
+            const result = await askFolderAI(folderId, userQuery);
             if (result.success && result.answer) {
                 setMessages(prev => [...prev, { role: 'assistant', content: result.answer }]);
             } else {

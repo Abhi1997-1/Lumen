@@ -9,19 +9,26 @@ export async function getSettings() {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-        return { hasKey: false }
+        return {
+            hasGeminiKey: false,
+            hasOpenAIKey: false,
+            hasGroqKey: false,
+            selectedProvider: 'gemini'
+        }
     }
 
     const { data } = await supabase
         .from('user_settings')
-        .select('gemini_api_key')
+        .select('gemini_api_key, openai_api_key, groq_api_key, selected_provider')
         .eq('user_id', user.id)
         .single()
 
-    if (data?.gemini_api_key) {
-        return { hasKey: true }
+    return {
+        hasGeminiKey: !!data?.gemini_api_key,
+        hasOpenAIKey: !!data?.openai_api_key,
+        hasGroqKey: !!data?.groq_api_key,
+        selectedProvider: data?.selected_provider || 'gemini'
     }
-    return { hasKey: false }
 }
 
 export async function saveSettings(formData: FormData) {
@@ -32,17 +39,27 @@ export async function saveSettings(formData: FormData) {
         throw new Error("Not authenticated")
     }
 
-    const apiKey = formData.get('gemini_api_key') as string
-    if (!apiKey) return
+    const updates: any = {
+        updated_at: new Date().toISOString()
+    }
 
-    const encryptedKey = encrypt(apiKey)
+    const geminiKey = formData.get('gemini_api_key') as string
+    if (geminiKey) updates.gemini_api_key = encrypt(geminiKey)
+
+    const openaiKey = formData.get('openai_api_key') as string
+    if (openaiKey) updates.openai_api_key = encrypt(openaiKey)
+
+    const groqKey = formData.get('groq_api_key') as string
+    if (groqKey) updates.groq_api_key = encrypt(groqKey)
+
+    const selectedProvider = formData.get('selected_provider') as string
+    if (selectedProvider) updates.selected_provider = selectedProvider
 
     const { error } = await supabase
         .from('user_settings')
         .upsert({
             user_id: user.id,
-            gemini_api_key: encryptedKey,
-            updated_at: new Date().toISOString()
+            ...updates
         })
 
     if (error) throw error
@@ -50,7 +67,7 @@ export async function saveSettings(formData: FormData) {
     revalidatePath('/dashboard')
 }
 
-export async function testGeminiConnection(apiKeyInput?: string) {
+export async function testConnection(provider: string, apiKeyInput?: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
@@ -62,19 +79,26 @@ export async function testGeminiConnection(apiKeyInput?: string) {
     if (!apiKey) {
         const { data: settings } = await supabase
             .from('user_settings')
-            .select('gemini_api_key')
+            .select('gemini_api_key, groq_api_key, openai_api_key')
             .eq('user_id', user.id)
             .single()
 
-        if (settings?.gemini_api_key) {
-            const { decrypt } = await import("@/lib/crypto") // Dynamic import to avoid cycles if any
+        const { decrypt } = await import("@/lib/crypto")
+
+        if (provider === 'gemini' && settings?.gemini_api_key) {
             apiKey = decrypt(settings.gemini_api_key)
+            source = 'personal'
+        } else if (provider === 'groq' && settings?.groq_api_key) {
+            apiKey = decrypt(settings.groq_api_key)
+            source = 'personal'
+        } else if (provider === 'openai' && settings?.openai_api_key) {
+            apiKey = decrypt(settings.openai_api_key)
             source = 'personal'
         }
     }
 
-    // If still no key, check system env
-    if (!apiKey) {
+    // Checking system env for Gemini only as fallback
+    if (!apiKey && provider === 'gemini') {
         apiKey = process.env.GEMINI_API_KEY || ''
         source = 'system'
     }
@@ -84,16 +108,31 @@ export async function testGeminiConnection(apiKeyInput?: string) {
     }
 
     try {
-        const { GoogleGenerativeAI } = await import("@google/generative-ai")
-        const genAI = new GoogleGenerativeAI(apiKey)
-        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" })
-
-        // Run a minimal generation to verify validity
-        await model.generateContent("Reply with 'OK'")
+        if (provider === 'gemini') {
+            const { GoogleGenerativeAI } = await import("@google/generative-ai")
+            const genAI = new GoogleGenerativeAI(apiKey)
+            // Using gemini-1.5-flash as verified in lib/gemini/service.ts
+            // If this fails, user might have an old key or restriction, but this is the correct model ID.
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+            await model.generateContent("Reply with 'OK'")
+        } else if (provider === 'groq') {
+            const { Groq } = await import("groq-sdk")
+            const groq = new Groq({ apiKey })
+            await groq.chat.completions.create({
+                messages: [{ role: "user", content: "Ping" }],
+                model: "llama-3.3-70b-versatile",
+            })
+        } else if (provider === 'openai') {
+            const OpenAI = (await import("openai")).default
+            const openai = new OpenAI({ apiKey })
+            await openai.models.list()
+        } else {
+            return { success: false, error: "Unknown provider" }
+        }
 
         return { success: true, source }
     } catch (error: any) {
-        console.error("Test connection failed:", error)
+        console.error(`Test ${provider} connection failed:`, error)
         return { success: false, error: error.message || "Invalid API Key" }
     }
 }

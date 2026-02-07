@@ -1,7 +1,8 @@
 'use server'
 
 import { createClient } from "@/lib/supabase/server"
-import { processMeetingWithGemini } from "@/lib/gemini/service"
+import { AIFactory } from "@/lib/ai/factory"
+import { decrypt as decryptString } from "@/lib/crypto"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
@@ -48,40 +49,36 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
 
     if (error) return { success: false, error: error.message }
 
-    // Trigger Gemini processing (Fire and forget-ish)
-    // We do NOT await this so the user isn't stuck waiting.
-    // In Vercel serverless, this might be terminated early, but for now this fixes the "Stuck" UI.
-    // Ideally use a background job queue (e.g. Inngest/Temporal) for production.
-    processMeetingWithGemini(user.id, storagePath)
-        .then(async (result) => {
-            // Calculate estimated duration if not provided
-            const wordCount = result.transcript ? result.transcript.trim().split(/\s+/).length : 0;
-            const estimatedDuration = Math.ceil(wordCount / 2.5);
-            const finalDuration = durationSeconds > 0 ? durationSeconds : estimatedDuration;
+    // Trigger AI Processing (Fire and forget to avoid timeout)
+    // We fetch settings again to get the decrypted keys (or decrypt them here)
+    const { data: allSettings } = await supabase
+        .from('user_settings')
+        .select('gemini_api_key, groq_api_key, openai_api_key, selected_provider')
+        .eq('user_id', user.id)
+        .single()
 
-            await supabase
-                .from('meetings')
-                .update({
-                    transcript: result.transcript,
-                    summary: result.summary,
-                    action_items: result.action_items,
-                    input_tokens: result.usage?.input_tokens || 0,
-                    output_tokens: result.usage?.output_tokens || 0,
-                    total_tokens: result.usage?.total_tokens || 0,
-                    status: 'completed',
-                    participants: result.participants || [],
-                    duration: finalDuration
-                })
-                .eq('id', meeting.id)
-        })
-        .catch(async (e) => {
-            console.error("Async processing failed:", e);
-            const errorMessage = e instanceof Error ? e.message : "Unknown error";
-            await supabase.from('meetings').update({
-                status: 'failed',
-                summary: `Processing Error: ${errorMessage}`
-            }).eq('id', meeting.id)
-        })
+    const provider = allSettings?.selected_provider || 'gemini'
+    let apiKey = ''
+
+    if (provider === 'groq' && allSettings?.groq_api_key) apiKey = decryptString(allSettings.groq_api_key)
+    if (provider === 'openai' && allSettings?.openai_api_key) apiKey = decryptString(allSettings.openai_api_key)
+        // Gemini uses internal auth or system env if no key provided
+
+        // Execute via Factory
+        (async () => {
+            try {
+                const service = AIFactory.getService(provider, apiKey, user.id);
+                await service.process(storagePath, meeting.id);
+            } catch (e) {
+                console.error("Async processing failed:", e);
+                const errorMessage = e instanceof Error ? e.message : "Unknown error";
+                const supabaseAdmin = await createClient();
+                await supabaseAdmin.from('meetings').update({
+                    status: 'failed',
+                    summary: `Processing Error: ${errorMessage}`
+                }).eq('id', meeting.id)
+            }
+        })();
 
     return { success: true, meetingId: meeting.id }
 }
@@ -97,27 +94,37 @@ export async function retryProcessing(meetingId: string) {
     // Reset status to processing
     await supabase.from('meetings').update({ status: 'processing', transcript: '', summary: '' }).eq('id', meetingId);
 
-    // Trigger Gemini (Await this time to catch errors live)
+    // Trigger Factory Logic (Await this time to catch errors live for retry)
     try {
         console.log("Retrying meeting:", meetingId, "File:", meeting.audio_url);
-        const result = await processMeetingWithGemini(user.id, meeting.audio_url);
 
-        await supabase.from('meetings').update({
-            transcript: result.transcript,
-            summary: result.summary,
-            action_items: result.action_items,
-            status: 'completed'
-        }).eq('id', meetingId);
+        // Fetch Settings again
+        const { decrypt } = await import("@/lib/crypto")
+        const { data: allSettings } = await supabase
+            .from('user_settings')
+            .select('gemini_api_key, groq_api_key, openai_api_key, selected_provider')
+            .eq('user_id', user.id)
+            .single()
+
+        const provider = allSettings?.selected_provider || 'gemini'
+        let apiKey = ''
+        if (provider === 'groq' && allSettings?.groq_api_key) apiKey = decryptString(allSettings.groq_api_key)
+        if (provider === 'openai' && allSettings?.openai_api_key) apiKey = decryptString(allSettings.openai_api_key)
+
+        const { AIFactory } = await import("@/lib/ai/factory");
+        const service = AIFactory.getService(provider, apiKey, user.id);
+
+        await service.process(meeting.audio_url, meetingId);
 
         revalidatePath(`/dashboard/${meetingId}`);
         return { success: true };
 
     } catch (e: any) {
-        console.error("Retry failed synchronously:", e);
+        console.error("Retry failed:", e);
 
         let friendlyError = e.message;
         if (e.message.includes('429') || e.message.includes('Quota') || e.message.includes('limit')) {
-            friendlyError = "Daily Limit Exceeded. Please add your own API Key in Settings to continue.";
+            friendlyError = "Limit Exceeded. Check your API Key settings.";
         }
 
         await supabase.from('meetings').update({
@@ -181,16 +188,33 @@ export async function translateTranscript(text: string, targetLanguage: string) 
     }
 }
 
-export async function askGemini(context: string, question: string) {
+export async function askAI(context: string, question: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
     try {
-        const { generateAnswer } = await import('@/lib/gemini/service')
-        const answer = await generateAnswer(user.id, context, question)
+        // Fetch Settings for Factory
+        const { decrypt: decryptFn } = await import("@/lib/crypto")
+        const { data: allSettings } = await supabase
+            .from('user_settings')
+            .select('gemini_api_key, groq_api_key, openai_api_key, selected_provider')
+            .eq('user_id', user.id)
+            .single()
+
+        const provider = allSettings?.selected_provider || 'gemini'
+        let apiKey = ''
+        if (provider === 'groq' && allSettings?.groq_api_key) apiKey = decryptFn(allSettings.groq_api_key)
+        if (provider === 'openai' && allSettings?.openai_api_key) apiKey = decryptFn(allSettings.openai_api_key)
+
+        const { AIFactory } = await import("@/lib/ai/factory");
+        const service = AIFactory.getService(provider, apiKey, user.id);
+
+        const answer = await service.ask(context, question);
+
         return { success: true, answer }
     } catch (error: any) {
+        console.error("Ask AI Error:", error);
         return { success: false, error: error.message }
     }
 }
@@ -224,16 +248,55 @@ export async function translateMeeting(meetingId: string, targetLanguage: string
     }
 }
 
-export async function askFolderGemini(folderId: string, question: string) {
+export async function askFolderAI(folderId: string, question: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
     try {
-        const { processFolderChat } = await import('@/lib/gemini/service')
-        const answer = await processFolderChat(user.id, folderId, question)
+        // 1. Fetch all meetings in the folder to build context
+        const { data: meetings } = await supabase
+            .from('meetings')
+            .select('title, summary, action_items, created_at')
+            .eq('folder_id', folderId)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(20); // Limit context window
+
+        if (!meetings || meetings.length === 0) {
+            return { success: true, answer: "This folder has no meetings yet." }
+        }
+
+        const context = meetings.map(m => `
+Date: ${new Date(m.created_at).toLocaleDateString()}
+Title: ${m.title}
+Summary: ${m.summary}
+Action Items: ${Array.isArray(m.action_items) ? m.action_items.join(', ') : ''}
+---
+`).join('\n');
+
+        // 2. Fetch Settings for Factory
+        const { decrypt: decryptString } = await import("@/lib/crypto")
+        const { data: allSettings } = await supabase
+            .from('user_settings')
+            .select('gemini_api_key, groq_api_key, openai_api_key, selected_provider')
+            .eq('user_id', user.id)
+            .single()
+
+        const provider = allSettings?.selected_provider || 'gemini'
+        let apiKey = ''
+        if (provider === 'groq' && allSettings?.groq_api_key) apiKey = decryptString(allSettings.groq_api_key)
+        if (provider === 'openai' && allSettings?.openai_api_key) apiKey = decryptString(allSettings.openai_api_key)
+
+        // 3. Execute via Factory
+        const { AIFactory } = await import("@/lib/ai/factory");
+        const service = AIFactory.getService(provider, apiKey, user.id);
+
+        const answer = await service.ask(context, question);
         return { success: true, answer }
+
     } catch (error: any) {
+        console.error("Ask Folder AI Error:", error);
         return { success: false, error: error.message }
     }
 }
