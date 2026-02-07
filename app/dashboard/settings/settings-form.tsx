@@ -174,8 +174,14 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                             {testStatus['gemini']?.status === 'testing' ? <Loader2 className="h-4 w-4 animate-spin" /> : "Test"}
                         </Button>
                     </div>
-                    {testStatus['gemini']?.status === 'error' && <p className="text-xs text-destructive">{testStatus['gemini'].message}</p>}
-                    {testStatus['gemini']?.status === 'success' && <p className="text-xs text-emerald-500">{testStatus['gemini'].message}</p>}
+                    {testStatus['gemini']?.status === 'error' && (
+                        <div className="text-xs text-destructive mt-1">
+                            {(testStatus['gemini']?.message || "").includes('404')
+                                ? "Error: Model not found. Ensure 'Generative Language API' is enabled in your Google Cloud Console."
+                                : testStatus['gemini']?.message}
+                        </div>
+                    )}
+                    {testStatus['gemini']?.status === 'success' && <p className="text-xs text-emerald-500 mt-1">{testStatus['gemini'].message}</p>}
                 </div>
 
                 {/* GROQ INPUT */}

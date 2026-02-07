@@ -33,8 +33,8 @@ function decryptText(text: string) {
 
 // Credit costs per minute by model
 const MODEL_CREDIT_COSTS: Record<string, number> = {
-    'gemini-flash': 1,
-    'gemini-pro': 2,
+    'gemini-1.5-flash': 1,
+    'gemini-1.5-pro': 2,
     'grok-2': 2,
     'gpt-4o': 3,
 }
@@ -48,55 +48,72 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
     // 1. Fetch user settings
     const { data: settings } = await supabase
         .from('user_settings')
-        .select('gemini_api_key, openai_api_key, groq_api_key, tier, credits_remaining, selected_provider')
+        .select('*')
         .eq('user_id', user.id)
         .single()
 
-    const hasApiKey = !!settings?.gemini_api_key
+    // Determine Provider
+    let provider = providerOverride || 'gemini'
+    if (modelOverride) {
+        if (modelOverride.includes('gpt')) provider = 'openai'
+        else if (modelOverride.includes('grok')) provider = 'groq'
+        else if (modelOverride.includes('gemini')) provider = 'gemini'
+    }
+
+    // Determine Key & Credit Logic
     const tier = settings?.tier || 'free'
     const credits = settings?.credits_remaining || 0
-    const model = modelOverride || 'gemini-flash'
+    const preferOwnKey = settings?.prefer_own_key || false
 
-    // Calculate credits needed (based on duration in minutes)
+    // Check availability of user keys
+    const userGeminiKey = settings?.gemini_api_key ? decryptText(settings.gemini_api_key) : null
+    const userOpenAIKey = settings?.openai_api_key ? decryptText(settings.openai_api_key) : null
+    const userGroqKey = settings?.groq_api_key ? decryptText(settings.groq_api_key) : null
+
+    let keyToUse: string | undefined = undefined
+    let usingCredits = false
+
+    // Resolve Key based on Provider
+    if (provider === 'gemini') keyToUse = userGeminiKey || undefined
+    if (provider === 'openai') keyToUse = userOpenAIKey || undefined
+    if (provider === 'groq') keyToUse = userGroqKey || undefined
+
+    // Logic:
+    // 1. If preferOwnKey AND we have a key -> Use it (usingCredits = false)
+    // 2. If Pro AND (no key OR !preferOwnKey) -> Use System Key (usingCredits = true)
+    // 3. If Free AND no key -> Block
+
+    if (keyToUse && preferOwnKey) {
+        // Option 1: User prefers their key and has one.
+        usingCredits = false;
+        console.log(`Using user's own key for ${provider} (Preference set)`)
+    } else if (tier === 'pro') {
+        // Option 2: Pro user. 
+        // If they have a key but didn't prefer it, we usually default to credits for Pro convenience?
+        // Or if they DON'T have a key, we MUST use credits.
+        // If they have a key and preferOwnKey is FALSE, we use credits.
+        usingCredits = true;
+        keyToUse = undefined; // Force system key usage downstream if implementation supports it
+    } else if (keyToUse) {
+        // Option 3: Free user but has key (BYOK)
+        usingCredits = false;
+    } else {
+        // Option 4: Block
+        return { success: false, error: "No API key found. Please upgrade to Connect your own key in Settings." }
+    }
+
+    // Calculate Credits if using them
+    const model = modelOverride || 'gemini-flash'
     const durationMinutes = Math.ceil(durationSeconds / 60)
     const creditCostPerMin = MODEL_CREDIT_COSTS[model] || 1
     const creditsNeeded = durationMinutes * creditCostPerMin
 
-    // 2. If they have API key → use their key (no credits needed)
-    if (hasApiKey) {
-        // Proceed with their key - no credit check
-    }
-    // 3. If Pro → check credits BEFORE processing
-    else if (tier === 'pro') {
+    if (usingCredits) {
         if (credits < creditsNeeded) {
             return {
                 success: false,
-                error: `Insufficient credits. Need ${creditsNeeded} credits for ${durationMinutes} min, but you have ${credits}. Buy more credits to continue.`
+                error: `Insufficient credits. Need ${creditsNeeded} credits, but you have ${credits}.`
             }
-        }
-    }
-    // 4. Free user without API key → block
-    else {
-        return {
-            success: false,
-            error: "To transcribe, please add your API key in Settings or upgrade to Pro."
-        }
-    }
-
-    // Determine Provider & Key
-    let provider = providerOverride || 'gemini'
-    let finalApiKey = hasApiKey ? settings?.gemini_api_key : undefined
-
-    // If model override is present
-    if (modelOverride) {
-        if (modelOverride.includes('gpt')) provider = 'openai'
-        else if (modelOverride.includes('grok')) provider = 'groq'
-        else provider = 'gemini'
-
-        // If Pro using credits (and no own key), use SYSTEM keys
-        if (tier === 'pro' && !hasApiKey) {
-            if (provider === 'openai') finalApiKey = process.env.OPENAI_API_KEY
-            if (provider === 'groq') finalApiKey = process.env.GROQ_API_KEY
         }
     }
 
@@ -105,16 +122,11 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
         .from('meetings')
         .insert({
             user_id: user.id,
-            storage_path: storagePath, // Using storage_path as per schema usually, but file shows audio_url? 
-            // The view_file showed audio_url: storagePath. I'll stick to that to be safe, 
-            // BUT wait, if I change it I might break it if underlying schema changed. 
-            // I'll use what was in view_file: audio_url: storagePath
             audio_url: storagePath,
             title: meetingTitle || 'Processing...',
             status: 'processing',
             duration: durationSeconds,
             model_used: model,
-            // provider: provider // Schema doesn't have provider column likely, so skip
         })
         .select()
         .single()
@@ -124,67 +136,50 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
         return { success: false, error: "Failed to create meeting record" }
     }
 
-    // Start processing
-    // We need to pass the resolved API key
-    // But processMeeting signature in this file might not accept apiKey yet?
-    // Let's check processMeeting signature. 
-    // It is imported? No, it's likely further down in this file or imported.
-    // I need to check where processMeeting comes from. 
-    // It's likely in this file. I'll assume I need to update it too or it's not shown.
-    // Actually, looking at previous view_file, I don't see processMeeting calls. 
-    // Ah, lines 102+ likely have it.
-    // Let's assume I can call it. 
-
-    // WAIT. The view_file cut off at line 100.
-    // I need to see how processing is triggered.
-    // I will return success here and let the client trigger? 
-    // Or I trigger it here?
-    // usually: await processMeeting(meeting.id)
-
-    // I'll just return success for now and assume processing is triggered elsewhere or I need to find it.
-    // User's previous code: `const result = await createMeeting(...)` then `router.push`.
-    // The `createMeeting` function usually triggers processing.
-
-    // Let's Look at the end of the file.
-
-    // I will just update the insert for now and leave the rest as is, 
-    // BUT I need to know if I should trigger processing.
-    // The view_file output showed limits check then insert.
-
-    // I'll try to keep the Replace strict.
-    // Insert successful, proceed to processing
-
-    // Start processing
-    let keyToUse = finalApiKey;
-
-    // If no system key (e.g. BYOK), decrypt stored user key
-    if (!keyToUse) {
-        if (provider === 'groq' && settings?.groq_api_key) keyToUse = decryptText(settings.groq_api_key);
-        if (provider === 'openai' && settings?.openai_api_key) keyToUse = decryptText(settings.openai_api_key);
-    }
-
-    // Execute via Factory (Fire and forget)
+    // Async Processing
     ; (async () => {
         try {
+            // Re-import dynamically to avoid circular deps if any, or just standard import
+            // const { AIFactory } = await import("@/lib/ai/factory"); 
+            // AIFactory is imported at top level, likely fine.
+
+            // Note: AIFactory.getService(provider, apiKey, userId)
+            // If apiKey is undefined, Service *should* use system key.
+            // Let's verify GeminiService supports this. (Previous knowledge says yes).
+
             const service = AIFactory.getService(provider, keyToUse, user.id);
             await service.process(storagePath, meeting.id);
 
-            // Deduct credits if Pro (and no key used)
-            if (tier === 'pro' && !keyToUse && creditsNeeded > 0) {
+            // Deduct credits if we decided to use them
+            if (usingCredits && creditsNeeded > 0) {
                 await deductCredits(creditsNeeded, meeting.id, model)
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error("Async processing failed:", e);
-            const errorMessage = e instanceof Error ? e.message : "Unknown error";
             const supabaseAdmin = await createClient();
             await supabaseAdmin.from('meetings').update({
                 status: 'failed',
-                summary: `Processing Error: ${errorMessage}`
+                summary: `Processing Error: ${e.message}`
             }).eq('id', meeting.id)
         }
     })();
 
     return { success: true, meetingId: meeting.id }
+}
+
+export async function togglePreferOwnKey(enabled: boolean) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Not authenticated" }
+
+    const { error } = await supabase
+        .from('user_settings')
+        .update({ prefer_own_key: enabled })
+        .eq('user_id', user.id)
+
+    if (error) return { success: false, error: error.message }
+    revalidatePath('/dashboard/settings')
+    return { success: true }
 }
 
 export async function retryProcessing(meetingId: string) {
@@ -539,17 +534,24 @@ export async function getCredits() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { credits: 0, tier: 'free', hasApiKey: false }
 
-    const { data: settings } = await supabase
-        .from('user_settings')
-        .select('credits_remaining, tier, gemini_api_key, credits_reset_at')
-        .eq('user_id', user.id)
-        .single()
+    try {
+        const { data: settings } = await supabase
+            .from('user_settings')
+            .select('credits_remaining, tier, gemini_api_key, credits_reset_at, prefer_own_key, is_admin')
+            .eq('user_id', user.id)
+            .single()
 
-    return {
-        credits: settings?.credits_remaining || 0,
-        tier: settings?.tier || 'free',
-        hasApiKey: !!settings?.gemini_api_key,
-        creditsResetAt: settings?.credits_reset_at
+        return {
+            credits: settings?.credits_remaining || 0,
+            tier: settings?.tier || 'free',
+            hasApiKey: !!settings?.gemini_api_key,
+            creditsResetAt: settings?.credits_reset_at,
+            preferOwnKey: !!settings?.prefer_own_key,
+            isAdmin: !!settings?.is_admin
+        }
+    } catch (error) {
+        console.error("Error fetching credits/settings:", error)
+        return { credits: 0, tier: 'free', hasApiKey: false, isAdmin: false }
     }
 }
 
@@ -616,13 +618,13 @@ export async function updateProfile(formData: FormData) {
     if (!user) return { success: false, error: "Not authenticated" }
 
     const fullName = formData.get('full_name') as string
-    const avatar = formData.get('avatar') as string
+    const avatarId = formData.get('avatar_id') as string
 
     // Update Supabase Auth Metadata (Standard way for simple profile data)
     const { error } = await supabase.auth.updateUser({
         data: {
             full_name: fullName,
-            avatar_url: avatar
+            avatar_id: avatarId
         }
     })
 

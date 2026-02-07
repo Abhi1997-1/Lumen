@@ -19,7 +19,7 @@ export async function getSettings() {
 
     const { data } = await supabase
         .from('user_settings')
-        .select('gemini_api_key, openai_api_key, groq_api_key, selected_provider')
+        .select('gemini_api_key, openai_api_key, groq_api_key, selected_provider, is_admin')
         .eq('user_id', user.id)
         .single()
 
@@ -27,7 +27,8 @@ export async function getSettings() {
         hasGeminiKey: !!data?.gemini_api_key,
         hasOpenAIKey: !!data?.openai_api_key,
         hasGroqKey: !!data?.groq_api_key,
-        selectedProvider: data?.selected_provider || 'gemini'
+        selectedProvider: data?.selected_provider || 'gemini',
+        isAdmin: !!data?.is_admin
     }
 }
 
@@ -136,3 +137,45 @@ export async function testConnection(provider: string, apiKeyInput?: string) {
         return { success: false, error: error.message || "Invalid API Key" }
     }
 }
+
+export async function syncSubscriptionStatus() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Not authenticated" }
+
+    // 1. Check for recent Pro subscription transactions (heuristic)
+    const { data: transactions } = await supabase
+        .from('credit_transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .ilike('description', '%Pro%')
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+    // 2. If found, ensure tier is 'pro'
+    if (transactions && transactions.length > 0) {
+        const { error } = await supabase
+            .from('user_settings')
+            .update({ tier: 'pro' })
+            .eq('user_id', user.id)
+
+        if (error) return { success: false, error: error.message }
+        revalidatePath('/dashboard')
+        return { success: true, message: "Restored Pro status based on transaction history." }
+    }
+
+    // 3. Fallback: Check if they ALREADY have Pro in DB but UI is stale (revalidate)
+    const { data: settings } = await supabase
+        .from('user_settings')
+        .select('tier')
+        .eq('user_id', user.id)
+        .single()
+
+    if (settings?.tier === 'pro') {
+        revalidatePath('/dashboard')
+        return { success: true, message: "Status synchronized." }
+    }
+
+    return { success: false, error: "No active Pro subscription found." }
+}
+

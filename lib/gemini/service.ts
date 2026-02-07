@@ -76,7 +76,7 @@ export async function processMeetingWithGemini(userId: string, storagePath: stri
             console.log("4. Generating Content with Gemini...");
             const genAI = new GoogleGenerativeAI(apiKey);
             const model = genAI.getGenerativeModel({
-                model: "gemini-flash-latest",
+                model: "gemini-1.5-flash",
                 generationConfig: {
                     responseMimeType: "application/json",
                     responseSchema: {

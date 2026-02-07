@@ -116,7 +116,7 @@ export function SubscriptionModal({ open, onOpenChange, currentTier, credits = 0
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                         {/* Free Plan (BYOK) */}
                         <div className={cn(
-                            "relative rounded-xl border p-6 flex flex-col transition-all",
+                            "relative rounded-xl border p-4 flex flex-col transition-all",
                             currentTier === 'free'
                                 ? "border-purple-500/50 bg-purple-500/5"
                                 : "border-border hover:border-purple-500/30"
@@ -170,39 +170,39 @@ export function SubscriptionModal({ open, onOpenChange, currentTier, credits = 0
                                 ? "border-indigo-500 bg-indigo-500/5"
                                 : "border-indigo-500/50 hover:border-indigo-500 bg-gradient-to-br from-indigo-500/5 to-purple-500/5"
                         )}>
-                            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                                <span className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide shadow-sm">
+                            <div className="absolute -top-2 left-1/2 -translate-x-1/2">
+                                <span className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide shadow-sm">
                                     Recommended
                                 </span>
                             </div>
 
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="h-8 w-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
-                                    <Sparkles className="h-4 w-4 text-indigo-400" />
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <div className="h-7 w-7 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                                    <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-indigo-400 text-sm">Pro</h3>
-                                    <p className="text-[10px] text-muted-foreground">Managed AI</p>
+                                    <h3 className="font-bold text-indigo-400 text-xs">Pro</h3>
+                                    <p className="text-[9px] text-muted-foreground">Managed AI</p>
                                 </div>
                             </div>
 
-                            <div className="mb-3">
-                                <span className="text-2xl font-bold">$10</span>
-                                <span className="text-muted-foreground text-xs">/mo</span>
-                                <p className="text-[10px] text-indigo-400 mt-0.5">1200 credits/month</p>
+                            <div className="mb-2">
+                                <span className="text-xl font-bold">$10</span>
+                                <span className="text-muted-foreground text-[10px]">/mo</span>
+                                <p className="text-[9px] text-indigo-400 mt-0.5">1200 credits/month</p>
                             </div>
 
-                            <ul className="space-y-1.5 text-xs flex-1 mb-3">
-                                <li className="flex items-center gap-2">
-                                    <Sparkles className="h-3 w-3 text-indigo-400" />
+                            <ul className="space-y-1 text-[11px] flex-1 mb-2">
+                                <li className="flex items-center gap-1.5">
+                                    <Sparkles className="h-2.5 w-2.5 text-indigo-400" />
                                     <span><b>No API key needed</b></span>
                                 </li>
-                                <li className="flex items-center gap-2">
-                                    <Check className="h-3 w-3 text-indigo-400" />
+                                <li className="flex items-center gap-1.5">
+                                    <Check className="h-2.5 w-2.5 text-indigo-400" />
                                     <span>All 4 AI models included</span>
                                 </li>
-                                <li className="flex items-center gap-2">
-                                    <Check className="h-3 w-3 text-indigo-400" />
+                                <li className="flex items-center gap-1.5">
+                                    <Check className="h-2.5 w-2.5 text-indigo-400" />
                                     <span>Buy extra credits anytime</span>
                                 </li>
                             </ul>

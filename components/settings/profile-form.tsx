@@ -9,17 +9,19 @@ import { updateProfile } from "@/app/actions"
 import { toast } from "sonner"
 import { Loader2, User } from "lucide-react"
 
-// Gradient Avatars
-const AVATARS = [
-    "bg-gradient-to-br from-red-500 to-orange-500",
-    "bg-gradient-to-br from-amber-500 to-yellow-500",
-    "bg-gradient-to-br from-lime-500 to-green-500",
-    "bg-gradient-to-br from-emerald-500 to-teal-500",
-    "bg-gradient-to-br from-cyan-500 to-sky-500",
-    "bg-gradient-to-br from-blue-500 to-indigo-500",
-    "bg-gradient-to-br from-violet-500 to-purple-500",
-    "bg-gradient-to-br from-fuchsia-500 to-pink-500",
-]
+// Avatar ID mapping for gradient backgrounds
+const AVATAR_MAP: Record<string, string> = {
+    "avatar-0": "bg-gradient-to-br from-red-500 to-orange-500",
+    "avatar-1": "bg-gradient-to-br from-amber-500 to-yellow-500",
+    "avatar-2": "bg-gradient-to-br from-lime-500 to-green-500",
+    "avatar-3": "bg-gradient-to-br from-emerald-500 to-teal-500",
+    "avatar-4": "bg-gradient-to-br from-cyan-500 to-sky-500",
+    "avatar-5": "bg-gradient-to-br from-blue-500 to-indigo-500",
+    "avatar-6": "bg-gradient-to-br from-violet-500 to-purple-500",
+    "avatar-7": "bg-gradient-to-br from-fuchsia-500 to-pink-500",
+}
+
+const AVATARS = Object.keys(AVATAR_MAP)
 
 interface ProfileFormProps {
     user: any
@@ -28,13 +30,13 @@ interface ProfileFormProps {
 export function ProfileForm({ user }: ProfileFormProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [name, setName] = useState(user?.user_metadata?.full_name || "")
-    const [selectedAvatar, setSelectedAvatar] = useState(user?.user_metadata?.avatar_url || AVATARS[5])
+    const [selectedAvatar, setSelectedAvatar] = useState(user?.user_metadata?.avatar_id || "avatar-5")
 
     async function handleSubmit() {
         setIsLoading(true)
         const formData = new FormData()
         formData.append('full_name', name)
-        formData.append('avatar', selectedAvatar)
+        formData.append('avatar_id', selectedAvatar)
 
         try {
             const res = await updateProfile(formData)
@@ -64,11 +66,11 @@ export function ProfileForm({ user }: ProfileFormProps) {
                 <div className="space-y-2">
                     <Label>Avatar</Label>
                     <div className="flex flex-wrap gap-3">
-                        {AVATARS.map((bgClass) => (
+                        {AVATARS.map((avatarId) => (
                             <button
-                                key={bgClass}
-                                onClick={() => setSelectedAvatar(bgClass)}
-                                className={`w-12 h-12 rounded-full ${bgClass} transition-all duration-200 border-2 ${selectedAvatar === bgClass ? "border-white ring-2 ring-indigo-500 scale-110" : "border-transparent hover:scale-105"}`}
+                                key={avatarId}
+                                onClick={() => setSelectedAvatar(avatarId)}
+                                className={`w-12 h-12 rounded-full ${AVATAR_MAP[avatarId]} transition-all duration-200 border-2 ${selectedAvatar === avatarId ? "border-white ring-2 ring-indigo-500 scale-110" : "border-transparent hover:scale-105"}`}
                                 type="button"
                             />
                         ))}

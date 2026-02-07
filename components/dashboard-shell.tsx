@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 interface DashboardShellProps {
     user: any
     children: React.ReactNode
-    usageData?: { credits: number, tier: string, hasApiKey: boolean }
+    usageData?: { credits: number, tier: string, hasApiKey: boolean, preferOwnKey?: boolean, isAdmin?: boolean }
 }
 
 export function DashboardShell({ user, children, usageData }: DashboardShellProps) {

@@ -9,12 +9,14 @@ import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Settings, User, Plug, Trash2, Check, Sparkles } from "lucide-react"
+import { Loader2, Settings, User, Plug, Trash2, Check, Sparkles, CreditCard } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { SettingsForm } from "./settings-form"
 import { IntegrationsCard } from "@/components/settings/integrations-card"
+import { CreditHistory } from "@/components/billing/credit-history"
+import { CreditUsageBreakdown } from "@/components/billing/usage-breakdown"
 import { getSettings } from "./actions"
 import { getIntegrationsStatus } from "./integrations-actions"
 import {
@@ -47,7 +49,12 @@ const AVATAR_OPTIONS = [
 
 export default function SettingsPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const supabase = createClient()
+
+    // Tab State
+    const [activeTab, setActiveTab] = useState("account")
+
     const [loading, setLoading] = useState(true)
     const [user, setUser] = useState<any>(null)
     const [settings, setSettings] = useState<any>(null)
@@ -57,6 +64,14 @@ export default function SettingsPage() {
     const [saving, setSaving] = useState(false)
     const [deleting, setDeleting] = useState(false)
     const [deleteConfirmText, setDeleteConfirmText] = useState("")
+
+    // Handle URL param for tabs
+    useEffect(() => {
+        const tab = searchParams.get('tab')
+        if (tab && ['account', 'billing', 'api', 'integrations'].includes(tab)) {
+            setActiveTab(tab)
+        }
+    }, [searchParams])
 
     useEffect(() => {
         async function loadData() {
@@ -149,11 +164,15 @@ export default function SettingsPage() {
                     </div>
 
                     {/* Tabs */}
-                    <Tabs defaultValue="account" className="space-y-6">
-                        <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+                        <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
                             <TabsTrigger value="account" className="gap-2">
                                 <User className="h-4 w-4" />
                                 Account
+                            </TabsTrigger>
+                            <TabsTrigger value="billing" className="gap-2">
+                                <CreditCard className="h-4 w-4" />
+                                Billing
                             </TabsTrigger>
                             <TabsTrigger value="api" className="gap-2">
                                 <Settings className="h-4 w-4" />
@@ -373,6 +392,74 @@ export default function SettingsPage() {
                                     </div>
                                 </CardContent>
                             </Card>
+                        </TabsContent>
+
+                        {/* API Keys Tab */}
+                        {/* Billing Tab */}
+                        <TabsContent value="billing" className="space-y-6">
+                            <div className="grid gap-6 md:grid-cols-2">
+                                <div className="md:col-span-2">
+                                    <CreditHistory />
+                                </div>
+                                <div className="md:col-span-2 lg:col-span-1 space-y-6">
+                                    <CreditUsageBreakdown />
+
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Plan Management</CardTitle>
+                                            <CardDescription>Troubleshoot your subscription status</CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="flex items-center justify-between">
+                                                <div className="space-y-1">
+                                                    <p className="text-sm font-medium">Missing Pro Status?</p>
+                                                    <p className="text-xs text-muted-foreground">If you upgraded but don't see Pro features, try restoring your status.</p>
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={async () => {
+                                                        toast.promise(
+                                                            (async () => {
+                                                                const { syncSubscriptionStatus } = await import("./actions")
+                                                                const res = await syncSubscriptionStatus()
+                                                                if (!res.success) throw new Error(res.error)
+                                                                router.refresh()
+                                                                return res.message
+                                                            })(),
+                                                            {
+                                                                loading: 'Syncing status...',
+                                                                success: (msg) => `${msg}`,
+                                                                error: (err) => `Failed: ${err.message}`
+                                                            }
+                                                        )
+                                                    }}
+                                                >
+                                                    Restore Plan
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                                <div className="md:col-span-2 lg:col-span-1">
+                                    <Card className="h-full">
+                                        <CardHeader>
+                                            <CardTitle>Payment Method</CardTitle>
+                                            <CardDescription>Manage your saved cards</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="flex flex-col items-center justify-center py-8 text-center space-y-4 h-[200px]">
+                                            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                                                <CreditCard className="h-6 w-6 text-muted-foreground" />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <h4 className="font-medium">No payment methods</h4>
+                                                <p className="text-sm text-muted-foreground">Add a card to purchase credits faster</p>
+                                            </div>
+                                            <Button variant="outline" size="sm" disabled>Add Card (Coming Soon)</Button>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </div>
                         </TabsContent>
 
                         {/* API Keys Tab */}

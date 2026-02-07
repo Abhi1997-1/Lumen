@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Mic, LayoutDashboard, Settings, FileText, Calendar, Users, BarChart3, HelpCircle, ChevronLeft, Menu } from 'lucide-react'
+import { Mic, LayoutDashboard, Settings, FileText, Calendar, Users, BarChart3, HelpCircle, ChevronLeft, Menu, Coins, Sparkles, Shield } from 'lucide-react'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -21,6 +21,7 @@ const navItems = [
     { name: 'Meetings', href: '/dashboard/meetings', icon: FileText },
     { name: 'Calendar', href: '/dashboard/calendar', icon: Calendar },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+    { name: 'Credits', href: '/dashboard/settings?tab=billing', icon: Coins },
 ]
 
 const secondaryNavItems = [
@@ -28,31 +29,16 @@ const secondaryNavItems = [
     { name: 'Help', href: '/dashboard/help', icon: HelpCircle },
 ]
 
-// Avatar options matching the settings page
-const AVATAR_OPTIONS: Record<string, { bg: string; emoji: string }> = {
-    'gradient-1': { bg: 'from-violet-500 to-purple-600', emoji: '🚀' },
-    'gradient-2': { bg: 'from-pink-500 to-rose-500', emoji: '🌸' },
-    'gradient-3': { bg: 'from-amber-400 to-orange-500', emoji: '🔥' },
-    'gradient-4': { bg: 'from-emerald-400 to-teal-500', emoji: '🌿' },
-    'gradient-5': { bg: 'from-blue-400 to-indigo-500', emoji: '💎' },
-    'gradient-6': { bg: 'from-fuchsia-500 to-pink-500', emoji: '🦄' },
-    'gradient-7': { bg: 'from-cyan-400 to-blue-500', emoji: '🌊' },
-    'gradient-8': { bg: 'from-yellow-400 to-amber-500', emoji: '⭐' },
-    'gradient-9': { bg: 'from-red-500 to-rose-600', emoji: '❤️' },
-    'gradient-10': { bg: 'from-lime-400 to-green-500', emoji: '🍀' },
-    'gradient-11': { bg: 'from-indigo-500 to-purple-600', emoji: '🔮' },
-    'gradient-12': { bg: 'from-slate-600 to-zinc-700', emoji: '🌙' },
-}
-
-function AvatarEmoji({ avatarId, size = 'md' }: { avatarId: string; size?: 'sm' | 'md' }) {
-    const avatar = AVATAR_OPTIONS[avatarId]
-    if (!avatar) return null
-    const sizeClasses = size === 'sm' ? 'h-8 w-8 text-lg' : 'h-12 w-12 text-2xl'
-    return (
-        <div className={`${sizeClasses} rounded-full bg-gradient-to-br ${avatar.bg} flex items-center justify-center shrink-0 shadow-sm`}>
-            {avatar.emoji}
-        </div>
-    )
+// Avatar gradient mapping
+const AVATAR_MAP: Record<string, string> = {
+    "avatar-0": "bg-gradient-to-br from-red-500 to-orange-500",
+    "avatar-1": "bg-gradient-to-br from-amber-500 to-yellow-500",
+    "avatar-2": "bg-gradient-to-br from-lime-500 to-green-500",
+    "avatar-3": "bg-gradient-to-br from-emerald-500 to-teal-500",
+    "avatar-4": "bg-gradient-to-br from-cyan-500 to-sky-500",
+    "avatar-5": "bg-gradient-to-br from-blue-500 to-indigo-500",
+    "avatar-6": "bg-gradient-to-br from-violet-500 to-purple-500",
+    "avatar-7": "bg-gradient-to-br from-fuchsia-500 to-pink-500",
 }
 
 interface NavSidebarProps {
@@ -61,7 +47,7 @@ interface NavSidebarProps {
     onToggle: () => void
     isMobile?: boolean
     onMobileClose?: () => void
-    usageData?: { credits: number, tier: string, hasApiKey: boolean }
+    usageData?: { credits: number, tier: string, hasApiKey: boolean, preferOwnKey?: boolean, isAdmin?: boolean }
 }
 
 export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobileClose, usageData }: NavSidebarProps) {
@@ -156,6 +142,49 @@ export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobi
                             )}
                         </Link>
                     ))}
+                    {/* Admin Link */}
+                    {usageData?.isAdmin && (
+                        <Link
+                            href="/dashboard/admin"
+                            onClick={handleLinkClick}
+                            className={cn(
+                                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 group relative text-amber-500 hover:text-amber-600 hover:bg-amber-500/10",
+                                pathname === '/dashboard/admin' && "bg-amber-500/10",
+                                collapsed && "justify-center px-2"
+                            )}
+                            title={collapsed ? "Admin" : undefined}
+                        >
+                            <Shield className="h-4 w-4 shrink-0" />
+                            {!collapsed && <span>Admin</span>}
+                            {collapsed && (
+                                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-popover text-popover-foreground text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 border border-border shadow-md">
+                                    Admin
+                                </div>
+                            )}
+                        </Link>
+                    )}
+
+                    {/* Donate Button for Free Tier */}
+                    {usageData?.tier === 'free' && (
+                        <a
+                            href="https://buy.stripe.com/test_donate" // Replace with actual donation link
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn(
+                                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 group relative text-pink-500 hover:text-pink-600 hover:bg-pink-500/10",
+                                collapsed && "justify-center px-2"
+                            )}
+                            title={collapsed ? "Donate" : undefined}
+                        >
+                            <Sparkles className="h-4 w-4 shrink-0" />
+                            {!collapsed && <span>Donate</span>}
+                            {collapsed && (
+                                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-popover text-popover-foreground text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 border border-border shadow-md">
+                                    Donate
+                                </div>
+                            )}
+                        </a>
+                    )}
                 </nav>
             </div>
 
@@ -164,24 +193,23 @@ export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobi
                 {/* Usage Card - Only show when expanded or on mobile */}
                 {(!collapsed && usageData) && (
                     <div className="mb-2 px-2">
-                        <UsageCard credits={usageData.credits} tier={usageData.tier} hasApiKey={usageData.hasApiKey} />
+                        <UsageCard
+                            credits={usageData.credits}
+                            tier={usageData.tier}
+                            hasApiKey={usageData.hasApiKey}
+                            preferOwnKey={usageData.preferOwnKey}
+                        />
                     </div>
                 )}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <button className={cn("w-full flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors cursor-pointer group outline-none", collapsed && "justify-center")}>
                             {/* User Avatar */}
-                            {user?.user_metadata?.avatar_url ? (
-                                <img
-                                    src={user.user_metadata.avatar_url}
-                                    alt=""
-                                    className="h-8 w-8 rounded-full object-cover shrink-0"
-                                />
-                            ) : user?.user_metadata?.avatar_id ? (
-                                <AvatarEmoji avatarId={user.user_metadata.avatar_id} size="sm" />
+                            {user?.user_metadata?.avatar_id ? (
+                                <div className={`h-8 w-8 rounded-full ${AVATAR_MAP[user.user_metadata.avatar_id] || 'bg-gradient-to-br from-blue-500 to-indigo-500'} flex items-center justify-center shrink-0 shadow-sm`}></div>
                             ) : (
                                 <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
-                                    {user.email?.charAt(0).toUpperCase()}
+                                    {user?.user_metadata?.full_name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
                                 </div>
                             )}
                             {!collapsed && (
