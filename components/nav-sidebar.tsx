@@ -207,6 +207,8 @@ export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobi
                             {/* User Avatar */}
                             {user?.user_metadata?.avatar_id ? (
                                 <div className={`h-8 w-8 rounded-full ${AVATAR_MAP[user.user_metadata.avatar_id] || 'bg-gradient-to-br from-blue-500 to-indigo-500'} flex items-center justify-center shrink-0 shadow-sm`}></div>
+                            ) : user?.user_metadata?.avatar_url ? (
+                                <img src={user.user_metadata.avatar_url} alt="Profile" className="h-8 w-8 rounded-full object-cover shrink-0 shadow-sm" />
                             ) : (
                                 <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
                                     {user?.user_metadata?.full_name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
@@ -216,7 +218,7 @@ export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobi
                                 <div className="flex flex-col min-w-0 text-left">
                                     <span className="text-sm font-semibold text-foreground truncate">{user?.user_metadata?.full_name || 'User'}</span>
                                     <span className="text-[10px] text-muted-foreground truncate" title={user.email}>
-                                        {usageData?.tier === 'pro' ? 'Pro Plan' : usageData?.tier === 'unlimited' ? 'Pro Unlimited' : 'Free Plan'}
+                                        {usageData?.isAdmin ? 'Admin' : usageData?.tier === 'pro' ? 'Pro Plan' : usageData?.tier === 'unlimited' ? 'Pro Unlimited' : 'Free Plan'}
                                     </span>
                                 </div>
                             )}

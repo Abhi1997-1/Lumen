@@ -4,8 +4,10 @@ import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Eye, EyeOff, Loader2, CheckCircle, Key, Zap } from "lucide-react"
-import { saveSettings } from "./actions" // Removed testGeminiConnection for now or need to adapt it
+import { Switch } from "@/components/ui/switch"
+import { Eye, EyeOff, Loader2, CheckCircle, Key, Zap, Sparkles } from "lucide-react"
+import { saveSettings } from "./actions"
+import { togglePreferOwnKey } from "@/app/actions" // Removed testGeminiConnection for now or need to adapt it
 import { toast } from "sonner"
 
 interface SettingsFormProps {
@@ -14,6 +16,9 @@ interface SettingsFormProps {
         hasOpenAIKey: boolean
         hasGroqKey: boolean
         selectedProvider: string
+        preferOwnKey?: boolean
+        tier?: string
+        isAdmin?: boolean
     }
 }
 
@@ -67,9 +72,52 @@ export function SettingsForm({ settings }: SettingsFormProps) {
         setShowKey(prev => ({ ...prev, [provider]: !prev[provider] }))
     }
 
+    const [preferOwnKey, setPreferOwnKey] = useState(settings.preferOwnKey || false)
+    const [togglingPro, setTogglingPro] = useState(false)
+
+    const handleProToggle = async (checked: boolean) => {
+        setTogglingPro(true)
+        try {
+            const result = await togglePreferOwnKey(checked)
+            if (result.success) {
+                setPreferOwnKey(checked)
+                toast.success(checked ? "Using your API Key" : "Using your Pro Credits")
+            } else {
+                toast.error(result.error)
+            }
+        } catch (error) {
+            toast.error("Failed to update preference")
+        } finally {
+            setTogglingPro(false)
+        }
+    }
+
     return (
         <form action={handleSubmit} className="space-y-6">
             <input type="hidden" name="selected_provider" value={selectedProvider} />
+
+            {/* PRO SETTINGS Banner */}
+            {(settings.tier === 'pro' || settings.isAdmin) && (
+                <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-indigo-500/10 flex items-center justify-center shrink-0">
+                            <Sparkles className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-foreground">Pro / Admin Mode</h3>
+                            <p className="text-sm text-muted-foreground">Manage how your requests are processed.</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-background p-2 rounded-lg border shadow-sm">
+                        <span className="text-xs font-medium text-muted-foreground">Use my own keys</span>
+                        <Switch
+                            checked={preferOwnKey}
+                            onCheckedChange={handleProToggle}
+                            disabled={togglingPro}
+                        />
+                    </div>
+                </div>
+            )}
 
             <div className="grid gap-4 md:grid-cols-3">
                 {/* GEMINI CARD */}

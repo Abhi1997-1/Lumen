@@ -231,6 +231,24 @@ export default function SettingsPage() {
                                         </div>
                                         <p className="text-sm text-muted-foreground">Pick a fun avatar that represents you!</p>
                                         <div className="grid grid-cols-6 gap-3">
+                                            {user?.user_metadata?.avatar_url && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedAvatar(null)}
+                                                    className={`relative h-14 w-14 rounded-full overflow-hidden shadow-md transition-all duration-200 hover:scale-110 hover:shadow-lg ${selectedAvatar === null
+                                                        ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-110'
+                                                        : 'hover:ring-2 hover:ring-muted-foreground/30'
+                                                        }`}
+                                                    title="Use Profile Photo"
+                                                >
+                                                    <img src={user.user_metadata.avatar_url} alt="Profile" className="h-full w-full object-cover" />
+                                                    {selectedAvatar === null && (
+                                                        <div className="absolute -bottom-1 -right-1 h-5 w-5 bg-primary rounded-full flex items-center justify-center">
+                                                            <Check className="h-3 w-3 text-white" />
+                                                        </div>
+                                                    )}
+                                                </button>
+                                            )}
                                             {AVATAR_OPTIONS.map((avatar) => (
                                                 <button
                                                     key={avatar.id}

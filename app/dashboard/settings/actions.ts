@@ -19,7 +19,7 @@ export async function getSettings() {
 
     const { data } = await supabase
         .from('user_settings')
-        .select('gemini_api_key, openai_api_key, groq_api_key, selected_provider, is_admin')
+        .select('gemini_api_key, openai_api_key, groq_api_key, selected_provider, is_admin, prefer_own_key, tier')
         .eq('user_id', user.id)
         .single()
 
@@ -28,7 +28,9 @@ export async function getSettings() {
         hasOpenAIKey: !!data?.openai_api_key,
         hasGroqKey: !!data?.groq_api_key,
         selectedProvider: data?.selected_provider || 'gemini',
-        isAdmin: !!data?.is_admin
+        isAdmin: !!data?.is_admin,
+        preferOwnKey: !!data?.prefer_own_key,
+        tier: data?.tier || 'free'
     }
 }
 
