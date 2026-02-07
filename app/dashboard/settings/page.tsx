@@ -302,53 +302,7 @@ export default function SettingsPage() {
                                 </CardContent>
                             </Card>
 
-                            {/* Support / Donate */}
-                            <Card className="bg-gradient-to-br from-pink-500/5 via-purple-500/5 to-indigo-500/5 border-primary/20">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <span className="text-xl">💖</span>
-                                        Support Lumen
-                                    </CardTitle>
-                                    <CardDescription>If you find Lumen helpful, consider supporting development!</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex flex-wrap gap-2">
-                                        <Button
-                                            variant="outline"
-                                            className="border-pink-500/30 bg-pink-500/5 hover:bg-pink-500/10 text-pink-600 dark:text-pink-400"
-                                            onClick={() => {
-                                                toast.success("Thank you for your support! 💖")
-                                                // TODO: Integrate payment link
-                                            }}
-                                        >
-                                            ☕ Buy me a coffee ($5)
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            className="border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 text-purple-600 dark:text-purple-400"
-                                            onClick={() => {
-                                                toast.success("You're amazing! Thank you! 🙏")
-                                                // TODO: Integrate payment link
-                                            }}
-                                        >
-                                            🎁 Donate $10
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            className="border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-                                            onClick={() => {
-                                                toast.success("Wow, you're incredibly generous! 🌟")
-                                                // TODO: Integrate payment link
-                                            }}
-                                        >
-                                            ⭐ Sponsor $25
-                                        </Button>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-3">
-                                        Your support helps keep Lumen free and continuously improving!
-                                    </p>
-                                </CardContent>
-                            </Card>
+
 
                             {/* Danger Zone */}
                             <Card className="bg-card border-destructive/30">
