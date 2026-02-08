@@ -533,9 +533,21 @@ export async function purchaseCredits(credits: number, price: number, packId: st
 export async function getCredits() {
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { credits: 0, tier: 'free', hasApiKey: false }
+
+    console.log('🔍 getCredits called')
+    console.log('👤 User:', user?.email, user?.id)
+
+    if (!user) {
+        console.log('❌ No user found')
+        return { credits: 0, tier: 'free', hasApiKey: false, isAdmin: false }
+    }
 
     try {
+        console.log('🔑 Environment check:', {
+            hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+            hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+        })
+
         // Use Admin Client to ensure we can read settings (including is_admin) regardless of RLS
         // This fixes the issue where the user has admin access but can't see the link
         const supabaseAdmin = createClient(
@@ -543,13 +555,24 @@ export async function getCredits() {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         )
 
-        const { data: settings } = await supabaseAdmin
+        const { data: settings, error } = await supabaseAdmin
             .from('user_settings')
             .select('credits_remaining, tier, gemini_api_key, credits_reset_at, prefer_own_key, is_admin')
             .eq('user_id', user.id)
             .single()
 
-        return {
+        console.log('📊 Settings query result:', {
+            hasData: !!settings,
+            error: error?.message,
+            is_admin: settings?.is_admin,
+            tier: settings?.tier
+        })
+
+        if (error) {
+            console.error('❌ Error fetching settings:', error)
+        }
+
+        const result = {
             credits: settings?.credits_remaining || 0,
             tier: settings?.tier || 'free',
             hasApiKey: !!settings?.gemini_api_key,
@@ -557,8 +580,11 @@ export async function getCredits() {
             preferOwnKey: !!settings?.prefer_own_key,
             isAdmin: !!settings?.is_admin
         }
+
+        console.log('✅ Returning:', result)
+        return result
     } catch (error) {
-        console.error("Error fetching credits/settings:", error)
+        console.error("❌ Error in getCredits:", error)
         return { credits: 0, tier: 'free', hasApiKey: false, isAdmin: false }
     }
 }
