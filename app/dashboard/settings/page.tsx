@@ -243,7 +243,7 @@ export default function SettingsPage() {
 
                     {/* Tabs */}
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                        <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
+                        <TabsList className="grid w-full grid-cols-5 lg:w-[600px]">
                             <TabsTrigger value="account" className="gap-2">
                                 <User className="h-4 w-4" />
                                 Account
@@ -251,6 +251,10 @@ export default function SettingsPage() {
                             <TabsTrigger value="billing" className="gap-2">
                                 <CreditCard className="h-4 w-4" />
                                 Billing
+                            </TabsTrigger>
+                            <TabsTrigger value="usage" className="gap-2">
+                                <Sparkles className="h-4 w-4" />
+                                Usage
                             </TabsTrigger>
                             <TabsTrigger value="api" className="gap-2">
                                 <Settings className="h-4 w-4" />

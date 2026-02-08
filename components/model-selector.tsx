@@ -16,6 +16,7 @@ interface ModelSelectorProps {
     value: string
     onValueChange: (value: string) => void
     disabled?: boolean
+    tier?: string
 }
 
 export function ModelSelector({ value, onValueChange, disabled }: ModelSelectorProps) {

@@ -7,7 +7,11 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-export async function processMeetingWithGemini(userId: string, storagePath: string) {
+export async function processMeetingWithGemini(
+    userId: string,
+    storagePath: string,
+    modelName: string = 'gemini-1.5-flash'  // Default to stable model
+) {
     console.log("🚀 START: processMeetingWithGemini", { userId, storagePath });
     try {
         // 0. CHECK RATE LIMIT FIRST
@@ -99,7 +103,7 @@ export async function processMeetingWithGemini(userId: string, storagePath: stri
             console.log("4. Generating Content with Gemini...");
             const genAI = new GoogleGenerativeAI(apiKey);
             const model = genAI.getGenerativeModel({
-                model: "gemini-2.0-flash-exp",
+                model: modelName,
                 generationConfig: {
                     responseMimeType: "application/json",
                     responseSchema: {

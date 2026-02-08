@@ -7,8 +7,8 @@ export class AIFactory {
     static getService(provider: string, apiKey: string | null | undefined, userId: string): AIService {
         switch (provider) {
             case 'groq':
-                if (!apiKey) throw new Error("Groq API Key missing");
-                return new GroqService(apiKey);
+                // Groq service fetches key from database if not provided (like Gemini)
+                return new GroqService(userId, apiKey || undefined);
             case 'openai':
                 if (!apiKey) throw new Error("OpenAI API Key missing");
                 return new OpenAIService(apiKey);

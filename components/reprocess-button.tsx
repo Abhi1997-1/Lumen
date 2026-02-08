@@ -12,7 +12,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { reprocessMeeting } from '@/app/dashboard/meetings/[id]/actions'
 import { toast } from 'sonner'
 import { RateLimitErrorDialog } from '@/components/rate-limit-error-dialog'
@@ -84,12 +83,12 @@ export function ReprocessButton({ meetingId, currentModel, tier }: ReprocessButt
                     </DialogHeader>
 
                     <div className="space-y-4 py-4">
-                        <Alert>
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription className="text-sm">
+                        <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                            <p className="text-sm text-amber-900 dark:text-amber-100">
                                 This will replace your current transcript, summary, and insights with new results from the selected model.
-                            </AlertDescription>
-                        </Alert>
+                            </p>
+                        </div>
 
                         <ModelSelector
                             value={selectedModel}

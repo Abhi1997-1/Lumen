@@ -24,7 +24,10 @@ export async function reprocessMeeting(meetingId: string, newModel: string) {
         return { success: false, error: 'Meeting not found' }
     }
 
-    if (!meeting.storage_path) {
+    // Check for audio file (try both storage_path and audio_url for compatibility)
+    const audioPath = meeting.storage_path || meeting.audio_url
+
+    if (!audioPath) {
         return { success: false, error: 'No audio file to reprocess' }
     }
 
@@ -35,8 +38,17 @@ export async function reprocessMeeting(meetingId: string, newModel: string) {
             .update({ status: 'processing' })
             .eq('id', meetingId)
 
-        // Reprocess with Gemini (the model parameter will be used in future enhancement)
-        const result = await processMeetingWithGemini(user.id, meeting.storage_path)
+        // Reprocess with selected model - route to correct provider
+        let result
+
+        if (newModel.startsWith('grok')) {
+            // Use Grok API
+            const { processMeetingWithGrok } = await import('@/lib/grok/service')
+            result = await processMeetingWithGrok(user.id, audioPath, newModel)
+        } else {
+            // Use Gemini API (default)
+            result = await processMeetingWithGemini(user.id, audioPath, newModel)
+        }
 
         if (!result.success) {
             // Restore original status
