@@ -127,8 +127,8 @@ export async function testConnection(provider: string, apiKeyInput?: string) {
         if (provider === 'gemini') {
             const { GoogleGenerativeAI } = await import("@google/generative-ai")
             const genAI = new GoogleGenerativeAI(apiKey)
-            // Using gemini-1.5-flash-latest as the current stable model
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" })
+            // Using gemini-2.0-flash-exp (Gemini 1.5 models retired April 2025)
+            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
             await model.generateContent("Reply with 'OK'")
         } else if (provider === 'groq') {
             const { Groq } = await import("groq-sdk")
