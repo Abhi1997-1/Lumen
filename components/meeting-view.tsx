@@ -64,6 +64,8 @@ import { Label } from "@/components/ui/label"
 import { useDebounce } from 'use-debounce';
 import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { ExportDialog } from '@/components/export-dialog'
+import { ReprocessButton } from '@/components/reprocess-button'
 
 interface MeetingViewProps {
     meeting: any;
@@ -553,7 +555,15 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                                         )}
                                     </div>
 
-                                    {/* Text Size Controls */}
+                                    {/* Action Buttons */}
+
+                                    <ReprocessButton
+                                        meetingId={meeting.id}
+                                        currentModel={meeting.processing_model || 'gemini-flash'}
+                                        tier={user.tier || 'free'}
+                                    />
+
+                                    <ExportDialog meeting={currentMeeting} />
                                     <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg border border-border">
                                         <Button
                                             variant={textSize === 'text-sm' ? 'secondary' : 'ghost'}
