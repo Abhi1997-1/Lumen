@@ -76,7 +76,7 @@ export async function processMeetingWithGemini(userId: string, storagePath: stri
             console.log("4. Generating Content with Gemini...");
             const genAI = new GoogleGenerativeAI(apiKey);
             const model = genAI.getGenerativeModel({
-                model: "gemini-1.5-flash",
+                model: "gemini-1.5-flash-latest",
                 generationConfig: {
                     responseMimeType: "application/json",
                     responseSchema: {
@@ -147,7 +147,7 @@ async function getGeminiModel(userId: string) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    return genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    return genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 }
 
 export async function generateTranslation(userId: string, text: string, targetLanguage: string) {

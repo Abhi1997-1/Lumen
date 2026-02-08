@@ -127,9 +127,8 @@ export async function testConnection(provider: string, apiKeyInput?: string) {
         if (provider === 'gemini') {
             const { GoogleGenerativeAI } = await import("@google/generative-ai")
             const genAI = new GoogleGenerativeAI(apiKey)
-            // Using gemini-1.5-flash as verified in lib/gemini/service.ts
-            // If this fails, user might have an old key or restriction, but this is the correct model ID.
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+            // Using gemini-1.5-flash-latest as the current stable model
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" })
             await model.generateContent("Reply with 'OK'")
         } else if (provider === 'groq') {
             const { Groq } = await import("groq-sdk")

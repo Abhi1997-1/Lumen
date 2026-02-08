@@ -9,6 +9,7 @@ import { Eye, EyeOff, Loader2, CheckCircle, Key, Zap, Sparkles } from "lucide-re
 import { saveSettings } from "./actions"
 import { togglePreferOwnKey } from "@/app/actions" // Removed testGeminiConnection for now or need to adapt it
 import { toast } from "sonner"
+import { ApiKeyHelpDialog } from '@/components/api-key-help-dialog'
 
 interface SettingsFormProps {
     settings: {
@@ -194,9 +195,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
                         <Label htmlFor="gemini_api_key">Gemini API Key</Label>
-                        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
-                            Get Key form Google AI Studio <span className="sr-only">(opens in new tab)</span>
-                        </a>
+                        <ApiKeyHelpDialog provider="gemini" />
                     </div>
                     <div className="flex gap-2">
                         <div className="relative flex-1">
@@ -272,9 +271,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
                         <Label htmlFor="openai_api_key">OpenAI API Key</Label>
-                        <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
-                            Get Key from OpenAI Platform
-                        </a>
+                        <ApiKeyHelpDialog provider="openai" />
                     </div>
                     <div className="flex gap-2">
                         <div className="relative flex-1">
