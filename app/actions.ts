@@ -761,7 +761,7 @@ export async function deleteUserAccount() {
         if (meetings && meetings.length > 0) {
             const paths = meetings.map(m => m.storage_path).filter(Boolean)
             if (paths.length > 0) {
-                await supabase.storage.from('recordings').remove(paths)
+                await supabase.storage.from('meetings').remove(paths)
             }
         }
 

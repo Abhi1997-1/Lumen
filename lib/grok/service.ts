@@ -46,7 +46,7 @@ export async function processMeetingWithGrok(
 
         // 2. Get audio file from storage
         const { data: audioFile, error: downloadError } = await supabase.storage
-            .from('audio-files')
+            .from('meetings')
             .download(storagePath)
 
         if (downloadError || !audioFile) {
