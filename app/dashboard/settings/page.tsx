@@ -105,18 +105,24 @@ export default function SettingsPage() {
         if (!user) return
         setSaving(true)
         try {
+            // Explicitly set to null if using profile photo, otherwise use selected gradient
+            const avatarValue = selectedAvatar === null ? null : selectedAvatar
+
             const { error } = await supabase.auth.updateUser({
                 data: {
                     full_name: displayName,
-                    avatar_id: selectedAvatar
+                    avatar_id: avatarValue
                 }
             })
             if (error) throw error
-            toast.success("Profile updated!")
-            router.refresh()
+            toast.success("Profile updated! Refreshing...")
+
+            // Force a full page reload to ensure user object is updated
+            setTimeout(() => {
+                window.location.reload()
+            }, 500)
         } catch (error: any) {
             toast.error(error.message || "Failed to update profile")
-        } finally {
             setSaving(false)
         }
     }

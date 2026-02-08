@@ -164,6 +164,27 @@ export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobi
                         </Link>
                     )}
 
+                    {/* Donate Button for Free Tier */}
+                    {usageData?.tier === 'free' && (
+                        <a
+                            href="https://buy.stripe.com/test_donate"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn(
+                                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 group relative text-pink-500 hover:text-pink-600 hover:bg-pink-500/10",
+                                collapsed && "justify-center px-2"
+                            )}
+                            title={collapsed ? "Donate" : undefined}
+                        >
+                            <Sparkles className="h-4 w-4 shrink-0" />
+                            {!collapsed && <span>Donate</span>}
+                            {collapsed && (
+                                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-popover text-popover-foreground text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 border border-border shadow-md">
+                                    Donate
+                                </div>
+                            )}
+                        </a>
+                    )}
 
                 </nav>
             </div>
@@ -184,16 +205,16 @@ export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobi
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <button className={cn("w-full flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors cursor-pointer group outline-none", collapsed && "justify-center")}>
-                            {/* User Avatar */
-                                (user?.user_metadata?.avatar_id && user.user_metadata.avatar_id !== 'null') ? (
-                                    <div className={`h-8 w-8 rounded-full ${AVATAR_MAP[user.user_metadata.avatar_id] || 'bg-gradient-to-br from-blue-500 to-indigo-500'} flex items-center justify-center shrink-0 shadow-sm`}></div>
-                                ) : user?.user_metadata?.avatar_url ? (
-                                    <img src={user.user_metadata.avatar_url} alt="Profile" className="h-8 w-8 rounded-full object-cover shrink-0 shadow-sm" />
-                                ) : (
-                                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
-                                        {user?.user_metadata?.full_name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
-                                    </div>
-                                )}
+                            {/* User Avatar */}
+                            {(user?.user_metadata?.avatar_id && user.user_metadata.avatar_id !== 'null' && user.user_metadata.avatar_id !== '') ? (
+                                <div className={`h-8 w-8 rounded-full ${AVATAR_MAP[user.user_metadata.avatar_id] || 'bg-gradient-to-br from-blue-500 to-indigo-500'} flex items-center justify-center shrink-0 shadow-sm`}></div>
+                            ) : user?.user_metadata?.avatar_url ? (
+                                <img src={user.user_metadata.avatar_url} alt="Profile" className="h-8 w-8 rounded-full object-cover shrink-0 shadow-sm" />
+                            ) : (
+                                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                                    {user?.user_metadata?.full_name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
+                                </div>
+                            )}
                             {!collapsed && (
                                 <div className="flex flex-col min-w-0 text-left">
                                     <span className="text-sm font-semibold text-foreground truncate">{user?.user_metadata?.full_name || 'User'}</span>
