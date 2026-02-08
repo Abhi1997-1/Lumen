@@ -19,6 +19,9 @@ export default function LoginPage() {
     const [isSignUp, setIsSignUp] = useState(false)
     const [verificationSent, setVerificationSent] = useState(false)
     const [resendCooldown, setResendCooldown] = useState(0)
+    const [showForgotPassword, setShowForgotPassword] = useState(false)
+    const [resetEmail, setResetEmail] = useState('')
+    const [resetSent, setResetSent] = useState(false)
 
     const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -114,6 +117,24 @@ export default function LoginPage() {
         }
     }
 
+    const handleForgotPassword = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setLoading(true)
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+                redirectTo: `${location.origin}/reset-password`,
+            })
+            if (error) throw error
+            setResetSent(true)
+            toast.success('Password reset link sent! Check your email.')
+        } catch (error: any) {
+            console.error(error)
+            toast.error(error.message || 'Failed to send reset email')
+        } finally {
+            setLoading(false)
+        }
+    }
+
     // Effect to handle cooldown timer
 
     useEffect(() => {
@@ -160,6 +181,73 @@ export default function LoginPage() {
         )
     }
 
+    // Forgot Password Screen
+    if (showForgotPassword) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-muted/40">
+                <Card className="w-full max-w-sm">
+                    <CardHeader>
+                        <CardTitle className="text-2xl">Forgot Password?</CardTitle>
+                        <CardDescription>
+                            {resetSent
+                                ? `We've sent a reset link to ${resetEmail}`
+                                : "Enter your email to receive a password reset link"}
+                        </CardDescription>
+                    </CardHeader>
+                    {!resetSent ? (
+                        <form onSubmit={handleForgotPassword}>
+                            <CardContent className="grid gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="reset-email">Email</Label>
+                                    <Input
+                                        id="reset-email"
+                                        type="email"
+                                        placeholder="m@example.com"
+                                        required
+                                        value={resetEmail}
+                                        onChange={(e) => setResetEmail(e.target.value)}
+                                    />
+                                </div>
+                            </CardContent>
+                            <CardFooter className="flex flex-col gap-4">
+                                <Button className="w-full" type="submit" disabled={loading}>
+                                    {loading ? 'Sending...' : 'Send Reset Link'}
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    className="w-full"
+                                    onClick={() => setShowForgotPassword(false)}
+                                    type="button"
+                                >
+                                    Back to Login
+                                </Button>
+                            </CardFooter>
+                        </form>
+                    ) : (
+                        <CardContent>
+                            <div className="space-y-4">
+                                <p className="text-sm text-muted-foreground">
+                                    Check your inbox and click the link to reset your password. If you don't see it, check your spam folder.
+                                </p>
+                                <Button
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={() => {
+                                        setShowForgotPassword(false)
+                                        setResetSent(false)
+                                        setResetEmail('')
+                                    }}
+                                >
+                                    Back to Login
+                                </Button>
+                            </div>
+                        </CardContent>
+                    )}
+                </Card>
+            </div>
+        )
+    }
+
     return (
         <div className="flex h-screen w-full items-center justify-center bg-muted/40">
             <Card className="w-full max-w-sm">
@@ -185,7 +273,18 @@ export default function LoginPage() {
                             />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="password">Password</Label>
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="password">Password</Label>
+                                {!isSignUp && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowForgotPassword(true)}
+                                        className="text-xs text-primary hover:underline"
+                                    >
+                                        Forgot password?
+                                    </button>
+                                )}
+                            </div>
                             <Input
                                 id="password"
                                 type="password"

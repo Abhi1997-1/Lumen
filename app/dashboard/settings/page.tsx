@@ -65,6 +65,13 @@ export default function SettingsPage() {
     const [deleting, setDeleting] = useState(false)
     const [deleteConfirmText, setDeleteConfirmText] = useState("")
 
+    // Password change states
+    const [currentPassword, setCurrentPassword] = useState("")
+    const [newPassword, setNewPassword] = useState("")
+    const [confirmPassword, setConfirmPassword] = useState("")
+    const [changingPassword, setChangingPassword] = useState(false)
+    const [passwordStrength, setPasswordStrength] = useState(0)
+
     // Handle URL param for tabs
     useEffect(() => {
         const tab = searchParams.get('tab')
@@ -124,6 +131,71 @@ export default function SettingsPage() {
         } catch (error: any) {
             toast.error(error.message || "Failed to update profile")
             setSaving(false)
+        }
+    }
+
+    const calculatePasswordStrength = (pass: string) => {
+        let strength = 0
+        if (pass.length >= 8) strength++
+        if (pass.length >= 12) strength++
+        if (/[a-z]/.test(pass) && /[A-Z]/.test(pass)) strength++
+        if (/\d/.test(pass)) strength++
+        if (/[^a-zA-Z0-9]/.test(pass)) strength++
+        return strength
+    }
+
+    const getPasswordStrengthColor = () => {
+        if (passwordStrength <= 1) return 'bg-red-500'
+        if (passwordStrength <= 3) return 'bg-yellow-500'
+        return 'bg-green-500'
+    }
+
+    const getPasswordStrengthText = () => {
+        if (passwordStrength <= 1) return 'Weak'
+        if (passwordStrength <= 3) return 'Medium'
+        return 'Strong'
+    }
+
+    const handleChangePassword = async () => {
+        if (newPassword !== confirmPassword) {
+            toast.error("Passwords do not match")
+            return
+        }
+
+        if (newPassword.length < 6) {
+            toast.error("Password must be at least 6 characters")
+            return
+        }
+
+        setChangingPassword(true)
+        try {
+            // First, verify current password by signing in
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+                email: user!.email!,
+                password: currentPassword
+            })
+
+            if (signInError) {
+                toast.error("Current password is incorrect")
+                return
+            }
+
+            // Update password
+            const { error } = await supabase.auth.updateUser({
+                password: newPassword
+            })
+
+            if (error) throw error
+
+            toast.success("Password updated successfully!")
+            setCurrentPassword("")
+            setNewPassword("")
+            setConfirmPassword("")
+            setPasswordStrength(0)
+        } catch (error: any) {
+            toast.error(error.message || "Failed to change password")
+        } finally {
+            setChangingPassword(false)
         }
     }
 
@@ -313,6 +385,74 @@ export default function SettingsPage() {
                                 </CardContent>
                             </Card>
 
+                            {/* Change Password - Only for email/password users */}
+                            {user?.app_metadata?.provider === 'email' && (
+                                <Card className="bg-card border-border">
+                                    <CardHeader>
+                                        <CardTitle>Change Password</CardTitle>
+                                        <CardDescription>Update your account password</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="current-password">Current Password</Label>
+                                            <Input
+                                                id="current-password"
+                                                type="password"
+                                                value={currentPassword}
+                                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                                placeholder="Enter current password"
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="new-password">New Password</Label>
+                                            <Input
+                                                id="new-password"
+                                                type="password"
+                                                value={newPassword}
+                                                onChange={(e) => {
+                                                    setNewPassword(e.target.value)
+                                                    setPasswordStrength(calculatePasswordStrength(e.target.value))
+                                                }}
+                                                placeholder="Enter new password"
+                                            />
+                                            {newPassword && (
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                                                            <div
+                                                                className={`h-full transition-all ${getPasswordStrengthColor()}`}
+                                                                style={{ width: `${(passwordStrength / 5) * 100}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-xs text-muted-foreground">{getPasswordStrengthText()}</span>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Use 8+ characters with a mix of letters, numbers & symbols
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="confirm-password">Confirm New Password</Label>
+                                            <Input
+                                                id="confirm-password"
+                                                type="password"
+                                                value={confirmPassword}
+                                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                                placeholder="Confirm new password"
+                                            />
+                                        </div>
+                                        <div className="flex justify-end">
+                                            <Button
+                                                onClick={handleChangePassword}
+                                                disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
+                                            >
+                                                {changingPassword ? "Changing..." : "Change Password"}
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
 
 
                             {/* Danger Zone */}

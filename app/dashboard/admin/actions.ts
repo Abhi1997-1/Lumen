@@ -58,11 +58,33 @@ export async function getAdminStats() {
 
         const totalCredits = creditSum?.reduce((acc, curr) => acc + (curr.credits_remaining || 0), 0) || 0
 
+        // 5. Active Users (signed in last 7 days)
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+        const { data: { users }, error: activeError } = await supabaseAdmin.auth.admin.listUsers()
+        const activeUsers = users.filter(u => {
+            if (!u.last_sign_in_at) return false
+            return new Date(u.last_sign_in_at) > sevenDaysAgo
+        }).length
+
+        // 6. Failed Meetings
+        const { count: failedMeetings } = await supabaseAdmin
+            .from('meetings')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'failed')
+
+        // 7. Revenue Estimate (Pro users × $10/month - example)
+        const revenueEstimate = (proUsers || 0) * 10
+
         return {
             totalUsers: totalUsers || 0,
             proUsers: proUsers || 0,
             totalMeetings: totalMeetings || 0,
-            totalCredits
+            totalCredits,
+            activeUsers: activeUsers || 0,
+            failedMeetings: failedMeetings || 0,
+            revenueEstimate
         }
     } catch (error: any) {
         console.error("Admin Stats Error:", error)
@@ -78,7 +100,7 @@ export async function getUsersList(page: number = 1, search: string = '') {
     const to = from + PAGE_SIZE - 1
 
     try {
-        // For MVP, List users from Auth Admin to get emails
+        // For MVP, List users from Auth Admin to get emails and metadata
         const { data: { users }, error: authError } = await supabaseAdmin.auth.admin.listUsers({
             page: page,
             perPage: PAGE_SIZE
@@ -86,19 +108,32 @@ export async function getUsersList(page: number = 1, search: string = '') {
 
         if (authError) throw authError
 
+        // Filter by search if provided
+        let filteredUsers = users
+        if (search) {
+            const searchLower = search.toLowerCase()
+            filteredUsers = users.filter(u =>
+                u.email?.toLowerCase().includes(searchLower) ||
+                u.id.toLowerCase().includes(searchLower)
+            )
+        }
+
         // Fetch settings for these users
-        const userIds = users.map(u => u.id)
+        const userIds = filteredUsers.map(u => u.id)
         const { data: settings } = await supabaseAdmin
             .from('user_settings')
             .select('*')
             .in('user_id', userIds)
 
         // Merge data
-        const combined = users.map(user => {
+        const combined = filteredUsers.map(user => {
             const setting = settings?.find(s => s.user_id === user.id)
             return {
                 id: user.id,
                 email: user.email,
+                avatarUrl: user.user_metadata?.avatar_url || null,
+                avatarId: user.user_metadata?.avatar_id || null,
+                fullName: user.user_metadata?.full_name || null,
                 tier: setting?.tier || 'free',
                 credits: setting?.credits_remaining || 0,
                 isAdmin: !!setting?.is_admin,
@@ -107,7 +142,7 @@ export async function getUsersList(page: number = 1, search: string = '') {
             }
         })
 
-        return { users: combined, total: 1000 }
+        return { users: combined, total: users.length }
     } catch (error: any) {
         console.error("Get Users Error:", error)
         return { error: error.message }
@@ -144,6 +179,61 @@ export async function grantCredits(userId: string, amount: number) {
 
         revalidatePath('/dashboard/admin')
         return { success: true }
+    } catch (error: any) {
+        return { success: false, error: error.message }
+    }
+}
+
+export async function toggleUserTier(userId: string, newTier: 'free' | 'pro') {
+    if (!await checkAdmin()) return { error: "Unauthorized" }
+
+    try {
+        const { error } = await supabaseAdmin
+            .from('user_settings')
+            .update({ tier: newTier })
+            .eq('user_id', userId)
+
+        if (error) throw error
+
+        revalidatePath('/dashboard/admin')
+        return { success: true }
+    } catch (error: any) {
+        return { success: false, error: error.message }
+    }
+}
+
+export async function toggleAdminStatus(userId: string, isAdmin: boolean) {
+    if (!await checkAdmin()) return { error: "Unauthorized" }
+
+    try {
+        const { error } = await supabaseAdmin
+            .from('user_settings')
+            .update({ is_admin: isAdmin })
+            .eq('user_id', userId)
+
+        if (error) throw error
+
+        revalidatePath('/dashboard/admin')
+        return { success: true }
+    } catch (error: any) {
+        return { success: false, error: error.message }
+    }
+}
+
+export async function getUserMeetings(userId: string) {
+    if (!await checkAdmin()) return { error: "Unauthorized" }
+
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('meetings')
+            .select('id, title, status, created_at')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(10)
+
+        if (error) throw error
+
+        return { success: true, meetings: data }
     } catch (error: any) {
         return { success: false, error: error.message }
     }
