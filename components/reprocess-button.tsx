@@ -13,7 +13,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { reprocessMeeting } from './actions'
+import { reprocessMeeting } from '@/app/dashboard/meetings/[id]/actions'
 import { toast } from 'sonner'
 import { RateLimitErrorDialog } from '@/components/rate-limit-error-dialog'
 
