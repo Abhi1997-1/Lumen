@@ -64,7 +64,9 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
     // Determine Key & Credit Logic
     const tier = settings?.tier || 'free'
     const credits = settings?.credits_remaining || 0
-    const preferOwnKey = settings?.prefer_own_key || false
+    // NOTE: Column doesn't exist - commenting out for now
+    // const preferOwnKey = settings?.prefer_own_key || false
+    const preferOwnKey = false // Default to false since column doesn't exist
 
     // Check availability of user keys
     const userGeminiKey = settings?.gemini_api_key ? decryptText(settings.gemini_api_key) : null
@@ -169,18 +171,30 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
 }
 
 export async function togglePreferOwnKey(enabled: boolean) {
+    // NOTE: Column prefer_own_key doesn't exist in database
+    // Disabling this functionality until column is created
+    return {
+        success: false,
+        error: 'Feature not available - database column missing'
+    }
+
+    /* Original code - commented out
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { success: false, error: "Not authenticated" }
+    if (!user) redirect('/login')
 
     const { error } = await supabase
         .from('user_settings')
         .update({ prefer_own_key: enabled })
         .eq('user_id', user.id)
 
-    if (error) return { success: false, error: error.message }
+    if (error) {
+        return { success: false, error: error.message }
+    }
+
     revalidatePath('/dashboard/settings')
     return { success: true }
+    */
 }
 
 export async function retryProcessing(meetingId: string) {
@@ -555,9 +569,10 @@ export async function getCredits() {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         )
 
+        // NOTE: Removed prefer_own_key from SELECT - column doesn't exist in database
         const { data: settings, error } = await supabaseAdmin
             .from('user_settings')
-            .select('credits_remaining, tier, gemini_api_key, credits_reset_at, prefer_own_key, is_admin')
+            .select('credits_remaining, tier, gemini_api_key, credits_reset_at, is_admin')
             .eq('user_id', user.id)
             .single()
 
@@ -570,6 +585,7 @@ export async function getCredits() {
 
         if (error) {
             console.error('❌ Error fetching settings:', error)
+            throw error // Re-throw to see the actual error
         }
 
         const result = {
@@ -577,7 +593,6 @@ export async function getCredits() {
             tier: settings?.tier || 'free',
             hasApiKey: !!settings?.gemini_api_key,
             creditsResetAt: settings?.credits_reset_at,
-            preferOwnKey: !!settings?.prefer_own_key,
             isAdmin: !!settings?.is_admin
         }
 

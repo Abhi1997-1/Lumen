@@ -17,20 +17,33 @@ export async function getSettings() {
         }
     }
 
-    const { data } = await supabase
-        .from('user_settings')
-        .select('gemini_api_key, openai_api_key, groq_api_key, selected_provider, is_admin, prefer_own_key, tier')
-        .eq('user_id', user.id)
-        .single()
+    try {
+        const { data, error } = await supabase
+            .from('user_settings')
+            .select('gemini_api_key, openai_api_key, groq_api_key, selected_provider, is_admin, tier')
+            .eq('user_id', user.id)
+            .single()
 
-    return {
-        hasGeminiKey: !!data?.gemini_api_key,
-        hasOpenAIKey: !!data?.openai_api_key,
-        hasGroqKey: !!data?.groq_api_key,
-        selectedProvider: data?.selected_provider || 'gemini',
-        isAdmin: !!data?.is_admin,
-        preferOwnKey: !!data?.prefer_own_key,
-        tier: data?.tier || 'free'
+        if (error) throw error
+
+        return {
+            hasGeminiKey: !!data?.gemini_api_key,
+            hasOpenAIKey: !!data?.openai_api_key,
+            hasGroqKey: !!data?.groq_api_key,
+            selectedProvider: data?.selected_provider || 'gemini',
+            isAdmin: !!data?.is_admin,
+            tier: data?.tier || 'free'
+        }
+    } catch (error) {
+        console.error("Error fetching user settings:", error)
+        return {
+            hasGeminiKey: false,
+            hasOpenAIKey: false,
+            hasGroqKey: false,
+            selectedProvider: 'gemini',
+            isAdmin: false,
+            tier: 'free'
+        }
     }
 }
 
