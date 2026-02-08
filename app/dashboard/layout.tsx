@@ -16,10 +16,10 @@ export default async function DashboardLayout({
         redirect('/login')
     }
 
-    const { credits, tier, hasApiKey, preferOwnKey, isAdmin } = await getCredits()
+    const { credits, tier, hasApiKey, isAdmin } = await getCredits()
 
     return (
-        <DashboardShell user={user} usageData={{ credits, tier, hasApiKey, preferOwnKey, isAdmin }}>
+        <DashboardShell user={user} usageData={{ credits, tier, hasApiKey, isAdmin }}>
             {children}
         </DashboardShell>
     )

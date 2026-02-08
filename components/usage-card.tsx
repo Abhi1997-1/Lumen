@@ -3,25 +3,21 @@
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Switch } from "@/components/ui/switch"
 import { Sparkles, Key, AlertTriangle, X, Coins, CreditCard } from "lucide-react"
 import { SubscriptionModal } from "@/components/subscription-modal"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { togglePreferOwnKey } from "@/app/actions"
 import { toast } from "sonner"
 
 interface UsageCardProps {
     credits: number;
     tier: string;
     hasApiKey: boolean;
-    preferOwnKey?: boolean;
 }
 
-export function UsageCard({ credits, tier, hasApiKey, preferOwnKey = false }: UsageCardProps) {
+export function UsageCard({ credits, tier, hasApiKey }: UsageCardProps) {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [isMinimized, setIsMinimized] = useState(false)
-    const [isToggling, setIsToggling] = useState(false)
     const router = useRouter()
 
     useEffect(() => {
@@ -31,13 +27,12 @@ export function UsageCard({ credits, tier, hasApiKey, preferOwnKey = false }: Us
     }, [])
 
     const isPro = tier === 'pro'
-    // BYOK is active if (hasApiKey AND !isPro) OR (hasApiKey AND isPro AND preferOwnKey)
-    const isByokEffectively = (hasApiKey && !isPro) || (hasApiKey && isPro && preferOwnKey)
+    // BYOK is active if hasApiKey AND !isPro
+    const isByokEffectively = hasApiKey && !isPro
 
     // Label logic
     const getTierLabel = () => {
-        if (isPro && !preferOwnKey) return 'Pro Plan'
-        if (isPro && preferOwnKey) return 'Pro (Using Key)' // Distinct label?
+        if (isPro) return 'Pro Plan'
         if (hasApiKey) return 'BYOK'
         return 'Free'
     }
@@ -47,27 +42,13 @@ export function UsageCard({ credits, tier, hasApiKey, preferOwnKey = false }: Us
         localStorage.setItem("usage_card_minimized", "true")
     }
 
-    const handleToggleKey = async (checked: boolean) => {
-        setIsToggling(true)
-        try {
-            const result = await togglePreferOwnKey(checked)
-            if (!result.success) throw new Error(result.error)
-            toast.success(checked ? "Using your API Key" : "Using your Credits")
-            router.refresh()
-        } catch (error: any) {
-            toast.error(error.message)
-        } finally {
-            setIsToggling(false)
-        }
-    }
-
     if (isMinimized) {
         return (
             <>
                 <Card className="bg-card border-border overflow-hidden relative shadow-sm group">
                     <CardContent className="p-2 flex items-center justify-between">
                         <div className="flex items-center gap-2 cursor-pointer" onClick={() => setIsMinimized(false)}>
-                            {isPro && !preferOwnKey ? (
+                            {isPro ? (
                                 <Sparkles className="h-3.5 w-3.5 text-indigo-500 fill-indigo-500" />
                             ) : hasApiKey ? (
                                 <Key className="h-3.5 w-3.5 text-purple-500" />
@@ -78,7 +59,7 @@ export function UsageCard({ credits, tier, hasApiKey, preferOwnKey = false }: Us
                                 <span className="text-xs font-semibold text-foreground">
                                     {getTierLabel()}
                                 </span>
-                                {isPro && !preferOwnKey && (
+                                {isPro && (
                                     <span className="text-[10px] text-muted-foreground">
                                         {credits} credits
                                     </span>
@@ -104,12 +85,12 @@ export function UsageCard({ credits, tier, hasApiKey, preferOwnKey = false }: Us
         <>
             <Card className="bg-card border-border overflow-hidden relative shadow-sm group">
                 {/* Visual Flair for Pro */}
-                {isPro && !preferOwnKey && <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/10 blur-xl rounded-full -mr-6 -mt-6" />}
+                {isPro && <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/10 blur-xl rounded-full -mr-6 -mt-6" />}
 
                 <CardContent className="p-2.5 space-y-2 relative z-10">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
-                            {isPro && !preferOwnKey ? (
+                            {isPro ? (
                                 <Sparkles className="h-3 w-3 text-indigo-500 fill-indigo-500" />
                             ) : hasApiKey ? (
                                 <Key className="h-3 w-3 text-purple-500" />
@@ -132,20 +113,7 @@ export function UsageCard({ credits, tier, hasApiKey, preferOwnKey = false }: Us
                         </Button>
                     </div>
 
-                    {/* Pro Toggle Logic */}
-                    {isPro && hasApiKey && (
-                        <div className="flex items-center justify-between py-1">
-                            <span className="text-[10px] font-medium text-muted-foreground">Use my API Key</span>
-                            <Switch
-                                checked={preferOwnKey}
-                                onCheckedChange={handleToggleKey}
-                                disabled={isToggling}
-                                className="scale-75 origin-right"
-                            />
-                        </div>
-                    )}
-
-                    {isPro && !preferOwnKey ? (
+                    {isPro ? (
                         // Pro Plan - Show credits
                         <div className="space-y-1 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => router.push('/dashboard/settings?tab=billing')}>
                             <div className="flex justify-between text-[9px] text-muted-foreground font-medium">
@@ -154,8 +122,8 @@ export function UsageCard({ credits, tier, hasApiKey, preferOwnKey = false }: Us
                             </div>
                             <Progress value={Math.min(100, (credits / 1200) * 100)} className="h-1 bg-secondary [&>div]:bg-indigo-500" />
                         </div>
-                    ) : (hasApiKey || preferOwnKey) ? (
-                        // BYOK or Pro using Key
+                    ) : hasApiKey ? (
+                        // BYOK
                         <div className="space-y-0.5">
                             <div className="text-[9px] text-muted-foreground flex items-center gap-1">
                                 <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />

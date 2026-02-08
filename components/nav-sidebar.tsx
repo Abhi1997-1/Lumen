@@ -47,7 +47,7 @@ interface NavSidebarProps {
     onToggle: () => void
     isMobile?: boolean
     onMobileClose?: () => void
-    usageData?: { credits: number, tier: string, hasApiKey: boolean, preferOwnKey?: boolean, isAdmin?: boolean }
+    usageData?: { credits: number, tier: string, hasApiKey: boolean, isAdmin?: boolean }
 }
 
 export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobileClose, usageData }: NavSidebarProps) {
@@ -198,7 +198,6 @@ export function NavSidebar({ user, collapsed, onToggle, isMobile = false, onMobi
                             credits={usageData.credits}
                             tier={usageData.tier}
                             hasApiKey={usageData.hasApiKey}
-                            preferOwnKey={usageData.preferOwnKey}
                         />
                     </div>
                 )}
