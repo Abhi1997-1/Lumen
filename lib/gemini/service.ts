@@ -2,6 +2,7 @@ import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { GoogleAIFileManager } from "@google/generative-ai/server";
 import { decryptText } from "@/lib/encryption";
 import { createAdminClient } from "@/lib/supabase/server";
+import { checkRateLimit, trackAPIUsage } from "@/lib/rate-limit/middleware";
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -9,6 +10,28 @@ import os from 'os';
 export async function processMeetingWithGemini(userId: string, storagePath: string) {
     console.log("🚀 START: processMeetingWithGemini", { userId, storagePath });
     try {
+        // 0. CHECK RATE LIMIT FIRST
+        console.log("0. Checking rate limits...");
+        const rateLimitCheck = await checkRateLimit(userId, 'gemini');
+
+        if (!rateLimitCheck.allowed) {
+            console.error("❌ Rate limit exceeded", rateLimitCheck);
+            await trackAPIUsage(userId, 'gemini', {
+                endpoint: 'processMeeting',
+                success: false,
+                errorCode: 'RATE_LIMIT_EXCEEDED',
+                errorMessage: rateLimitCheck.errorMessage
+            });
+
+            return {
+                success: false,
+                error: rateLimitCheck.errorMessage,
+                upgradePrompt: rateLimitCheck.upgradePrompt,
+                resetAt: rateLimitCheck.resetAt.toISOString()
+            };
+        }
+        console.log("✅ Rate limit OK, remaining:", rateLimitCheck.remaining);
+
         // 1. Get User Key
         console.log("1. Initializing Admin Client...");
         const supabase = await createAdminClient();
@@ -110,6 +133,14 @@ export async function processMeetingWithGemini(userId: string, storagePath: stri
             const usage = result.response.usageMetadata;
 
             const parsedResponse = JSON.parse(responseText);
+
+            // Track successful API usage
+            console.log("5a. Tracking API usage...");
+            await trackAPIUsage(userId, 'gemini', {
+                endpoint: 'processMeeting',
+                tokensUsed: usage?.totalTokenCount || 0,
+                success: true
+            });
 
             return {
                 ...parsedResponse,
