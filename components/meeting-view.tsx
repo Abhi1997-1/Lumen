@@ -243,11 +243,26 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
 
     // Show Overlay if processing (and NOT failed, and NOT dismissed)
     if (meeting.status !== 'failed' && !meeting.transcript && !meeting.summary && !dismissedProcessing) {
+        const handleCancel = async () => {
+            const confirmed = confirm('Are you sure you want to cancel processing? The meeting will be marked as failed.')
+            if (!confirmed) return
+
+            const { cancelMeetingProcessing } = await import('@/app/actions/cancel-processing')
+            const result = await cancelMeetingProcessing(meeting.id)
+
+            if (result.success) {
+                toast.success('Processing cancelled')
+                router.push('/dashboard/meetings')
+            } else {
+                toast.error(result.error || 'Failed to cancel')
+            }
+        }
+
         return (
             <PremiumProcessingOverlay
                 status="Analyzing Audio..."
                 progress={simulatedProgress}
-                onCancel={() => setDismissedProcessing(true)}
+                onCancel={handleCancel}
             />
         )
     }

@@ -200,7 +200,8 @@ export default function SettingsPage() {
                                 <CardContent className="space-y-6">
                                     {/* Current Avatar Display */}
                                     <div className="flex items-center gap-6">
-                                        {user?.user_metadata?.avatar_url ? (
+                                        {/* Show avatar based on priority: avatar_url > selected gradient > fallback */}
+                                        {user?.user_metadata?.avatar_url && !selectedAvatar ? (
                                             <Avatar className="h-20 w-20 ring-2 ring-primary/20">
                                                 <AvatarImage src={user.user_metadata.avatar_url} />
                                                 <AvatarFallback className="text-2xl bg-primary/10 text-primary">
@@ -235,7 +236,11 @@ export default function SettingsPage() {
                                             <Sparkles className="h-4 w-4 text-primary" />
                                             <Label className="text-base font-semibold">Choose Your Avatar</Label>
                                         </div>
-                                        <p className="text-sm text-muted-foreground">Pick a fun avatar that represents you!</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {user?.user_metadata?.avatar_url
+                                                ? "Use your profile photo or pick a fun avatar!"
+                                                : "Pick a fun avatar that represents you!"}
+                                        </p>
                                         <div className="grid grid-cols-6 gap-3">
                                             {user?.user_metadata?.avatar_url && (
                                                 <button
