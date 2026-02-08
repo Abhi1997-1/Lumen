@@ -43,9 +43,7 @@ export async function exportMeeting(
             return exportAsText(meeting, options, filename)
         case 'md':
             return exportAsMarkdown(meeting, options, filename)
-        case '
-
-pdf':
+        case 'pdf':
             return exportAsPDF(meeting, options, filename)
         case 'json':
             return exportAsJSON(meeting, options, filename)
@@ -136,13 +134,13 @@ function exportAsPDF(meeting: Meeting, options: ExportOptions, filename: string)
 
     // Title
     doc.setFontSize(18)
-    doc.setFont(undefined, 'bold')
+    doc.setFont('helvetica', 'bold')
     doc.text(meeting.title, margin, y)
     y += 10
 
     // Date
     doc.setFontSize(10)
-    doc.setFont(undefined, 'normal')
+    doc.setFont('helvetica', 'normal')
     doc.setTextColor(100)
     doc.text(`Date: ${new Date(meeting.created_at).toLocaleString()}`, margin, y)
     y += 8
@@ -152,11 +150,11 @@ function exportAsPDF(meeting: Meeting, options: ExportOptions, filename: string)
     if (options.includeSummary && meeting.summary) {
         y += 5
         doc.setFontSize(14)
-        doc.setFont(undefined, 'bold')
+        doc.setFont('helvetica', 'bold')
         doc.text('Summary', margin, y)
         y += 8
         doc.setFontSize(10)
-        doc.setFont(undefined, 'normal')
+        doc.setFont('helvetica', 'normal')
         const summaryLines = doc.splitTextToSize(meeting.summary, maxWidth)
         doc.text(summaryLines, margin, y)
         y += summaryLines.length * 5 + 5
@@ -167,11 +165,11 @@ function exportAsPDF(meeting: Meeting, options: ExportOptions, filename: string)
         if (y > 250) { doc.addPage(); y = margin }
         y += 5
         doc.setFontSize(14)
-        doc.setFont(undefined, 'bold')
+        doc.setFont('helvetica', 'bold')
         doc.text('Key Topics', margin, y)
         y += 8
         doc.setFontSize(10)
-        doc.setFont(undefined, 'normal')
+        doc.setFont('helvetica', 'normal')
         meeting.key_topics.forEach(topic => {
             const topicLines = doc.splitTextToSize(`• ${topic}`, maxWidth)
             if (y + topicLines.length * 5 > 280) { doc.addPage(); y = margin }
@@ -186,11 +184,11 @@ function exportAsPDF(meeting: Meeting, options: ExportOptions, filename: string)
         if (y > 250) { doc.addPage(); y = margin }
         y += 5
         doc.setFontSize(14)
-        doc.setFont(undefined, 'bold')
+        doc.setFont('helvetica', 'bold')
         doc.text('Action Items', margin, y)
         y += 8
         doc.setFontSize(10)
-        doc.setFont(undefined, 'normal')
+        doc.setFont('helvetica', 'normal')
         meeting.action_items.forEach((item, i) => {
             const itemLines = doc.splitTextToSize(`${i + 1}. ${item}`, maxWidth)
             if (y + itemLines.length * 5 > 280) { doc.addPage(); y = margin }
@@ -205,17 +203,17 @@ function exportAsPDF(meeting: Meeting, options: ExportOptions, filename: string)
         if (y > 250) { doc.addPage(); y = margin }
         y += 5
         doc.setFontSize(14)
-        doc.setFont(undefined, 'bold')
+        doc.setFont('helvetica', 'bold')
         doc.text('Transcript', margin, y)
         y += 8
         doc.setFontSize(9)
-        doc.setFont(undefined, 'normal')
+        doc.setFont('helvetica', 'normal')
 
         // Limit transcript to avoid huge PDFs
         const shortTranscript = meeting.transcript.substring(0, 5000)
         const transcriptLines = doc.splitTextToSize(shortTranscript, maxWidth)
 
-        transcriptLines.forEach(line => {
+        transcriptLines.forEach((line: string) => {
             if (y > 280) { doc.addPage(); y = margin }
             doc.text(line, margin, y)
             y += 4
