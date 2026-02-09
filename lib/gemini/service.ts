@@ -10,7 +10,7 @@ import os from 'os';
 export async function processMeetingWithGemini(
     userId: string,
     storagePath: string,
-    modelName: string = 'gemini-1.5-flash-latest'  // Default to stable model
+    modelName: string = 'gemini-1.5-flash'  // Default to stable model
 ) {
     console.log("🚀 START: processMeetingWithGemini", { userId, storagePath });
     try {
@@ -328,7 +328,7 @@ export async function transcribeAudioChunkGemini(userId: string, audioBuffer: Bu
     }
 }
 
-export async function analyzeMeetingText(userId: string, transcript: string, modelName: string = 'gemini-1.5-flash-latest') {
+export async function analyzeMeetingText(userId: string, transcript: string, modelName: string = 'gemini-1.5-flash') {
     try {
         console.log("AnalyzeText: Starting text analysis...");
         // 1. Get Key

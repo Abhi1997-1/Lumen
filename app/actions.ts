@@ -243,7 +243,7 @@ export async function retryProcessing(meetingId: string) {
         // Ideally we should use the model stored in the meeting record or user settings?
         // createMeeting stores 'model_used' in meeting table.
         // Let's use that if available, or default.
-        const modelToUse = meeting.model_used || 'gemini-1.5-flash-latest';
+        const modelToUse = meeting.model_used || 'gemini-1.5-flash';
 
         console.log(`Retry: Starting Analysis with ${provider} (Model: ${modelToUse})...`);
         const analysisService = AIFactory.getService(provider, apiKey, user.id);
