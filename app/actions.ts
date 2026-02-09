@@ -152,9 +152,9 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
             console.log("Creation: Transcription complete. Length:", transcript.length);
 
             // 2. Analysis via Selected Provider
-            console.log(`Creation: Starting Analysis with ${provider}...`);
+            console.log(`Creation: Starting Analysis with ${provider} (Model: ${model})...`);
             const analysisService = AIFactory.getService(provider, keyToUse, user.id);
-            await analysisService.analyze(transcript, meeting.id);
+            await analysisService.analyze(transcript, meeting.id, model);
 
             // Deduct credits if we decided to use them
             if (usingCredits && creditsNeeded > 0) {
@@ -240,9 +240,14 @@ export async function retryProcessing(meetingId: string) {
         const transcript = await groqService.transcribe(meeting.audio_url);
 
         // 2. Analysis via Selected Provider
-        console.log(`Retry: Starting Analysis with ${provider}...`);
+        // Ideally we should use the model stored in the meeting record or user settings?
+        // createMeeting stores 'model_used' in meeting table.
+        // Let's use that if available, or default.
+        const modelToUse = meeting.model_used || 'gemini-1.5-flash-latest';
+
+        console.log(`Retry: Starting Analysis with ${provider} (Model: ${modelToUse})...`);
         const analysisService = AIFactory.getService(provider, apiKey, user.id);
-        await analysisService.analyze(transcript, meetingId);
+        await analysisService.analyze(transcript, meetingId, modelToUse);
 
         revalidatePath(`/dashboard/${meetingId}`);
         return { success: true };

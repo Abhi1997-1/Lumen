@@ -109,7 +109,7 @@ export class GroqService implements AIService {
         }
     }
 
-    async analyze(transcript: string, meetingId: string): Promise<void> {
+    async analyze(transcript: string, meetingId: string, model?: string): Promise<void> {
         await this.initialize();
         if (!this.groq) throw new Error('Groq client not initialized');
 

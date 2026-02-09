@@ -36,7 +36,7 @@ export class OpenAIService implements AIService {
         throw new Error("Transcribe not supported on OpenAI service. Please use Groq for transcription.");
     }
 
-    async analyze(transcript: string, meetingId: string): Promise<void> {
+    async analyze(transcript: string, meetingId: string, model?: string): Promise<void> {
         try {
             const completion = await this.openai.chat.completions.create({
                 messages: [

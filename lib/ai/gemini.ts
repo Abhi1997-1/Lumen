@@ -9,9 +9,9 @@ export class GeminiService implements AIService {
         throw new Error("Transcribe not supported on Gemini service. Please use Groq for transcription.");
     }
 
-    async analyze(transcript: string, meetingId: string): Promise<void> {
+    async analyze(transcript: string, meetingId: string, model?: string): Promise<void> {
         try {
-            const result = await analyzeMeetingText(this.userId, transcript);
+            const result = await analyzeMeetingText(this.userId, transcript, model);
 
             // Calculate estimated duration
             const wordCount = transcript.trim().split(/\s+/).length;
