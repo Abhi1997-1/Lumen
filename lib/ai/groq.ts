@@ -66,12 +66,32 @@ export class GroqService implements AIService {
         }
     }
 
-    async transcribe(filePath: string): Promise<string> {
+    async transcribe(storagePath: string): Promise<string> {
         await this.initialize();
         if (!this.groq) throw new Error('Groq client not initialized');
 
+        // Groq/Whisper requires a file stream. 
+        // Since storagePath is a Supabase path (e.g., "userId/filename.mp3"), we must download it first.
+
+        const path = await import('path');
+        const os = await import('os');
+        const fs = await import('fs');
+
+        const supabase = await createAdminClient();
+        const { data: fileData, error: downloadError } = await supabase.storage.from('meetings').download(storagePath);
+
+        if (downloadError) {
+            console.error("Groq Download Error:", downloadError);
+            throw new Error(`Failed to download audio file: ${downloadError.message}`);
+        }
+
+        // Create temp file
+        const tempFilePath = path.join(os.tmpdir(), `groq-${Date.now()}.mp3`);
+        const buffer = Buffer.from(await fileData.arrayBuffer());
+        fs.writeFileSync(tempFilePath, buffer);
+
         try {
-            const fileStream = fs.createReadStream(filePath);
+            const fileStream = fs.createReadStream(tempFilePath);
             const transcription = await this.groq.audio.transcriptions.create({
                 file: fileStream,
                 model: 'whisper-large-v3',
@@ -81,6 +101,11 @@ export class GroqService implements AIService {
         } catch (error) {
             console.error("Groq Transcription Error:", error);
             throw error;
+        } finally {
+            // Cleanup
+            if (fs.existsSync(tempFilePath)) {
+                fs.unlinkSync(tempFilePath);
+            }
         }
     }
 
