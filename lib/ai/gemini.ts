@@ -1,18 +1,20 @@
 import { AIService } from './service';
-import { processMeetingWithGemini } from '@/lib/gemini/service';
+import { processMeetingWithGemini, analyzeMeetingText } from '@/lib/gemini/service';
 import { createClient } from '@/lib/supabase/server';
 
 export class GeminiService implements AIService {
     constructor(private userId: string) { }
 
-    async process(filePath: string, meetingId: string): Promise<void> {
-        try {
-            // Re-use existing business logic
-            // Note: processMeetingWithGemini is "multimodal", inputs audio, outputs full metadata
-            const result = await processMeetingWithGemini(this.userId, filePath);
+    async transcribe(filePath: string): Promise<string> {
+        throw new Error("Transcribe not supported on Gemini service. Please use Groq for transcription.");
+    }
 
-            // Calculate estimated duration if not provided
-            const wordCount = result.transcript ? result.transcript.trim().split(/\s+/).length : 0;
+    async analyze(transcript: string, meetingId: string): Promise<void> {
+        try {
+            const result = await analyzeMeetingText(this.userId, transcript);
+
+            // Calculate estimated duration
+            const wordCount = transcript.trim().split(/\s+/).length;
             const estimatedDuration = Math.ceil(wordCount / 2.5);
 
             // Save to DB
@@ -20,18 +22,15 @@ export class GeminiService implements AIService {
             await supabase
                 .from('meetings')
                 .update({
-                    transcript: result.transcript,
+                    transcript: transcript, // Save the transcript
                     summary: result.summary,
                     action_items: result.action_items,
                     input_tokens: result.usage?.input_tokens || 0,
                     output_tokens: result.usage?.output_tokens || 0,
                     total_tokens: result.usage?.total_tokens || 0,
                     status: 'completed',
-                    participants: result.participants || [],
-                    // Only update duration if it wasn't set (or we want to overwrite?)
-                    // The main action usually sets duration. 
-                    // Let's safe-guard: if result has duration? No, result doesn't.
-                    // We'll update duration here just in case.
+                    // participants: result.participants || [], // Text analysis doesn't give participants unless we prompt for it
+                    // For now, omit participants or leave empty
                 })
                 .eq('id', meetingId);
 

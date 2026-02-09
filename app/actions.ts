@@ -144,14 +144,17 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
         try {
             // Re-import dynamically to avoid circular deps if any, or just standard import
             // const { AIFactory } = await import("@/lib/ai/factory"); 
-            // AIFactory is imported at top level, likely fine.
 
-            // Note: AIFactory.getService(provider, apiKey, userId)
-            // If apiKey is undefined, Service *should* use system key.
-            // Let's verify GeminiService supports this. (Previous knowledge says yes).
+            // 1. Mandatory Transcription via Groq
+            console.log("Creation: Starting Mandatory Groq Transcription...");
+            const groqService = AIFactory.getService('groq', userGroqKey, user.id);
+            const transcript = await groqService.transcribe(storagePath);
+            console.log("Creation: Transcription complete. Length:", transcript.length);
 
-            const service = AIFactory.getService(provider, keyToUse, user.id);
-            await service.process(storagePath, meeting.id);
+            // 2. Analysis via Selected Provider
+            console.log(`Creation: Starting Analysis with ${provider}...`);
+            const analysisService = AIFactory.getService(provider, keyToUse, user.id);
+            await analysisService.analyze(transcript, meeting.id);
 
             // Deduct credits if we decided to use them
             if (usingCredits && creditsNeeded > 0) {
@@ -225,9 +228,21 @@ export async function retryProcessing(meetingId: string) {
         if (provider === 'openai' && typeof allSettings?.openai_api_key === 'string') apiKey = decryptText(allSettings.openai_api_key)
 
         const { AIFactory } = await import("@/lib/ai/factory");
-        const service = AIFactory.getService(provider, apiKey, user.id);
 
-        await service.process(meeting.audio_url, meetingId);
+        // 1. Mandatory Transcription via Groq
+        console.log("Retry: Starting Mandatory Groq Transcription...");
+        // For retry, we need to ensure we have Groq key if needed (usually system key for GroqService if not provided)
+        // But let's look for user's groq key specifically if they have one
+        let groqKey = undefined;
+        if (typeof allSettings?.groq_api_key === 'string') groqKey = decryptText(allSettings.groq_api_key);
+
+        const groqService = AIFactory.getService('groq', groqKey, user.id);
+        const transcript = await groqService.transcribe(meeting.audio_url);
+
+        // 2. Analysis via Selected Provider
+        console.log(`Retry: Starting Analysis with ${provider}...`);
+        const analysisService = AIFactory.getService(provider, apiKey, user.id);
+        await analysisService.analyze(transcript, meetingId);
 
         revalidatePath(`/dashboard/${meetingId}`);
         return { success: true };

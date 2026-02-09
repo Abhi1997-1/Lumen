@@ -15,12 +15,7 @@ export class GroqService implements AIService {
         this.providedApiKey = apiKey;
     }
 
-    async process(filePath: string, meetingId: string): Promise<void> {
-        // Initialize Groq client with API key from database or provided key
-        await this.initialize();
-        const transcript = await this.transcribe(filePath);
-        await this.summarize(transcript, meetingId);
-    }
+
 
     private async initialize() {
         if (this.groq) return; // Already initialized
@@ -71,7 +66,8 @@ export class GroqService implements AIService {
         }
     }
 
-    private async transcribe(filePath: string): Promise<string> {
+    async transcribe(filePath: string): Promise<string> {
+        await this.initialize();
         if (!this.groq) throw new Error('Groq client not initialized');
 
         try {
@@ -88,7 +84,8 @@ export class GroqService implements AIService {
         }
     }
 
-    private async summarize(transcript: string, meetingId: string): Promise<void> {
+    async analyze(transcript: string, meetingId: string): Promise<void> {
+        await this.initialize();
         if (!this.groq) throw new Error('Groq client not initialized');
 
         try {

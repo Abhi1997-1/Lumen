@@ -1,4 +1,5 @@
 export interface AIService {
-    process(filePath: string, meetingId: string): Promise<void>
+    transcribe(filePath: string): Promise<string>
+    analyze(transcript: string, meetingId: string): Promise<void>
     ask(context: string, question: string): Promise<string>
 }

@@ -10,10 +10,7 @@ export class OpenAIService implements AIService {
         this.openai = new OpenAI({ apiKey });
     }
 
-    async process(filePath: string, meetingId: string): Promise<void> {
-        const transcript = await this.transcribe(filePath);
-        await this.summarize(transcript, meetingId);
-    }
+
 
     async ask(context: string, question: string): Promise<string> {
         try {
@@ -35,22 +32,11 @@ export class OpenAIService implements AIService {
         }
     }
 
-    private async transcribe(filePath: string): Promise<string> {
-        try {
-            const fileStream = fs.createReadStream(filePath);
-            const transcription = await this.openai.audio.transcriptions.create({
-                file: fileStream,
-                model: 'whisper-1',
-                response_format: 'text',
-            });
-            return transcription as unknown as string;
-        } catch (error) {
-            console.error("OpenAI Transcription Error:", error);
-            throw error;
-        }
+    async transcribe(filePath: string): Promise<string> {
+        throw new Error("Transcribe not supported on OpenAI service. Please use Groq for transcription.");
     }
 
-    private async summarize(transcript: string, meetingId: string): Promise<void> {
+    async analyze(transcript: string, meetingId: string): Promise<void> {
         try {
             const completion = await this.openai.chat.completions.create({
                 messages: [

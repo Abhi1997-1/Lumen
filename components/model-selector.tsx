@@ -24,7 +24,7 @@ export function ModelSelector({ value, onValueChange, disabled }: ModelSelectorP
 
     return (
         <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-muted-foreground">Select AI Model</label>
+            <label className="text-sm font-medium text-muted-foreground">Select Analysis Model</label>
             <Select value={value} onValueChange={onValueChange} disabled={disabled}>
                 <SelectTrigger className="w-[280px]">
                     <SelectValue>

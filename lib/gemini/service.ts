@@ -327,3 +327,74 @@ export async function transcribeAudioChunkGemini(userId: string, audioBuffer: Bu
         return "";
     }
 }
+
+export async function analyzeMeetingText(userId: string, transcript: string, modelName: string = 'gemini-1.5-flash') {
+    try {
+        console.log("AnalyzeText: Starting text analysis...");
+        // 1. Get Key
+        const supabase = await createAdminClient();
+        const { data: settings } = await supabase.from('user_settings').select('gemini_api_key').eq('user_id', userId).single();
+
+        let apiKey = '';
+        if (settings?.gemini_api_key) {
+            apiKey = decryptText(settings.gemini_api_key);
+        } else if (process.env.GEMINI_API_KEY) {
+            apiKey = process.env.GEMINI_API_KEY;
+        } else {
+            throw new Error("Gemini API Key not found.");
+        }
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({
+            model: modelName,
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                        title: { type: SchemaType.STRING },
+                        summary: { type: SchemaType.STRING },
+                        action_items: {
+                            type: SchemaType.ARRAY,
+                            items: { type: SchemaType.STRING }
+                        }
+                    }
+                }
+            }
+        });
+
+        const prompt = `Analyze this transcript. 
+        1) Provide a concise Meeting Title. 
+        2) Provide a comprehensive 'Executive Summary'. 
+        3) List 'action_items'.
+        
+        TRANSCRIPT:
+        ${transcript.substring(0, 50000)} 
+        `;
+
+        const result = await model.generateContent(prompt);
+        const responseText = result.response.text();
+        const usage = result.response.usageMetadata;
+
+        const parsed = JSON.parse(responseText);
+
+        await trackAPIUsage(userId, 'gemini', {
+            endpoint: 'analyzeText',
+            tokensUsed: usage?.totalTokenCount || 0,
+            success: true
+        });
+
+        return {
+            ...parsed,
+            usage: {
+                input_tokens: usage?.promptTokenCount || 0,
+                output_tokens: usage?.candidatesTokenCount || 0,
+                total_tokens: usage?.totalTokenCount || 0
+            }
+        };
+
+    } catch (error) {
+        console.error("Gemini Text Analysis Error:", error);
+        throw error;
+    }
+}
