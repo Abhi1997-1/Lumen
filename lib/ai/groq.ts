@@ -57,7 +57,7 @@ export class GroqService implements AIService {
                     },
                     { role: 'user', content: question }
                 ],
-                model: 'llama3-70b-8192',
+                model: 'llama-3.3-70b-versatile',
             });
             return completion.choices[0]?.message?.content || "No answer generated.";
         } catch (error) {
@@ -128,7 +128,7 @@ export class GroqService implements AIService {
                     },
                     { role: 'user', content: transcript }
                 ],
-                model: 'llama3-70b-8192',
+                model: model || 'llama-3.3-70b-versatile',
                 response_format: { type: 'json_object' }
             });
 
