@@ -6,10 +6,10 @@ import { Sparkles, Zap, Brain, Rocket } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export const AI_MODELS = [
-    { id: 'gemini-flash', name: 'Gemini Flash', cost: 1, icon: Zap, color: 'text-yellow-500' },
-    { id: 'gemini-pro', name: 'Gemini Pro', cost: 2, icon: Sparkles, color: 'text-purple-500' },
-    { id: 'grok-2', name: 'Grok 2', cost: 2, icon: Rocket, color: 'text-blue-500' },
-    { id: 'gpt-4o', name: 'ChatGPT-4o', cost: 3, icon: Brain, color: 'text-emerald-500' },
+    { id: 'gemini-flash', name: 'Gemini Flash', provider: 'gemini', cost: 1, icon: Zap, color: 'text-yellow-500' },
+    { id: 'gemini-pro', name: 'Gemini Pro', provider: 'gemini', cost: 2, icon: Sparkles, color: 'text-purple-500' },
+    { id: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3', provider: 'groq', cost: 1, icon: Rocket, color: 'text-blue-500' },
+    { id: 'gpt-4o', name: 'ChatGPT-4o', provider: 'openai', cost: 3, icon: Brain, color: 'text-emerald-500' },
 ]
 
 interface ModelSelectorProps {

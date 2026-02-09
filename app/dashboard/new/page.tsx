@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
 import { ChevronLeft, Upload, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
-import { createMeeting } from '@/app/actions'
+import { createMeeting, createMeetingWithTranscript } from '@/app/actions'
 import { PremiumProcessingOverlay } from '@/components/ui/premium-processing-overlay'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -22,8 +22,9 @@ import { useAudioCompressor } from '@/hooks/use-audio-compressor'
 import { ProviderSelector } from '@/components/provider-selector'
 import { ModelSelector } from '@/components/model-selector'
 import { getProviderStatus } from './actions'
-
-// ...
+import { useBrowserWhisper } from '@/lib/whisper/use-browser-whisper'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Cpu, Cloud } from 'lucide-react'
 
 export default function NewMeetingPage() {
     const router = useRouter()
@@ -37,6 +38,10 @@ export default function NewMeetingPage() {
     const [selectedProvider, setSelectedProvider] = useState('gemini')
     const [selectedModel, setSelectedModel] = useState('gemini-flash')
     const [tier, setTier] = useState('free')
+    const [transcriptionMethod, setTranscriptionMethod] = useState<'browser' | 'server'>('browser')
+
+    // Browser Whisper Hook
+    const { transcribe: browserTranscribe, progress: whisperProgress, isReady: whisperReady, error: whisperError } = useBrowserWhisper()
 
     useEffect(() => {
         getProviderStatus().then(status => {
@@ -73,28 +78,22 @@ export default function NewMeetingPage() {
 
             let fileToUpload = fileToProcess
 
-            // Check if compression is needed (> 50MB) OR if user requested "Best" (always compress large files? Or maybe just > 10MB?)
-            // For now, let's stick to the 50MB trigger for auto-compression to avoid slowing down small uploads unnecessarily.
-            // BUT, user asked for "Best compressor". Maybe we should lower threshold to 10MB?
+            // Compression for large files
             const MAX_raw_MB = 10
             if (fileToProcess.size > MAX_raw_MB * 1024 * 1024) {
-                setStatusText('Compressing audio... (This uses your device power)')
+                setStatusText('Compressing audio...')
                 toast.info(`Optimizing file (${(fileToProcess.size / 1024 / 1024).toFixed(1)}MB)...`)
-
-                // Using our new "Best" settings: Mono, 24kHz, 48kbps
                 fileToUpload = await compressAudio(fileToProcess, {
                     bitrate: '48k',
                     sampleRate: '22050'
                 })
-
                 toast.success(`Compressed to ${(fileToUpload.size / 1024 / 1024).toFixed(1)}MB`)
             }
 
-            setStatusText('Uploading...')
-
+            // Upload file first (needed for both methods)
+            setStatusText('Uploading audio...')
             const userId = user.id
             const timestamp = Date.now()
-            // Sanitize filename
             const sanitizedFileName = fileToUpload.name.replace(/[^a-zA-Z0-9.-]/g, '_')
             const filePath = `${userId}/${timestamp}-${sanitizedFileName}`
 
@@ -104,8 +103,41 @@ export default function NewMeetingPage() {
 
             if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`)
 
-            setStatusText('Creating meeting entry...')
-            const result = await createMeeting(filePath, title || fileToUpload.name, 0, selectedProvider, selectedModel)
+            let result;
+
+            if (transcriptionMethod === 'browser') {
+                // BROWSER TRANSCRIPTION (Free!)
+                setStatusText('Transcribing in browser... (this may take a minute)')
+
+                try {
+                    const transcript = await browserTranscribe(fileToUpload)
+
+                    if (!transcript || transcript.trim().length === 0) {
+                        throw new Error('Browser transcription returned empty text')
+                    }
+
+                    setStatusText('Creating meeting with transcript...')
+                    result = await createMeetingWithTranscript(
+                        transcript,
+                        filePath,
+                        title || fileToUpload.name,
+                        0,
+                        selectedProvider,
+                        selectedModel
+                    )
+                } catch (browserError: any) {
+                    console.warn('Browser transcription failed, falling back to server:', browserError)
+                    toast.warning('Browser transcription failed, using server fallback...')
+
+                    // Fallback to server transcription
+                    setStatusText('Using server transcription...')
+                    result = await createMeeting(filePath, title || fileToUpload.name, 0, selectedProvider, selectedModel)
+                }
+            } else {
+                // SERVER TRANSCRIPTION (Groq Whisper)
+                setStatusText('Creating meeting (server transcription)...')
+                result = await createMeeting(filePath, title || fileToUpload.name, 0, selectedProvider, selectedModel)
+            }
 
             if (!result.success) throw new Error(result.error)
 
@@ -153,6 +185,48 @@ export default function NewMeetingPage() {
                         disabled={loading}
                     />
                 </div>
+
+                {/* Transcription Method Selector */}
+                <div className="grid gap-2">
+                    <Label>Transcription Method</Label>
+                    <RadioGroup
+                        value={transcriptionMethod}
+                        onValueChange={(v) => setTranscriptionMethod(v as 'browser' | 'server')}
+                        className="flex gap-4"
+                        disabled={loading}
+                    >
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="browser" id="browser" />
+                            <Label htmlFor="browser" className="flex items-center gap-1.5 cursor-pointer">
+                                <Cpu className="h-4 w-4 text-green-500" />
+                                <span>Browser (Free)</span>
+                            </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="server" id="server" />
+                            <Label htmlFor="server" className="flex items-center gap-1.5 cursor-pointer">
+                                <Cloud className="h-4 w-4 text-blue-500" />
+                                <span>Server (Groq)</span>
+                            </Label>
+                        </div>
+                    </RadioGroup>
+                    <p className="text-xs text-muted-foreground">
+                        {transcriptionMethod === 'browser'
+                            ? 'Transcribes in your browser. 100% free, but may be slow for long audio.'
+                            : 'Uses Groq Whisper on server. Fast, but requires Groq API key.'}
+                    </p>
+                </div>
+
+                {/* Whisper Progress (Browser) */}
+                {loading && transcriptionMethod === 'browser' && whisperProgress.status !== 'idle' && (
+                    <div className="rounded-md bg-blue-500/10 p-3 border border-blue-500/20">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Cpu className="h-4 w-4 text-blue-500 animate-pulse" />
+                            <span className="text-sm font-medium">{whisperProgress.message}</span>
+                        </div>
+                        <Progress value={whisperProgress.progress} className="h-2" />
+                    </div>
+                )}
 
                 <div className="flex items-center justify-between">
                     {tier === 'pro' ? (

@@ -53,11 +53,11 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
         .eq('user_id', user.id)
         .single()
 
-    // Determine Provider
+    // Determine Provider from model
     let provider = providerOverride || 'gemini'
     if (modelOverride) {
         if (modelOverride.includes('gpt')) provider = 'openai'
-        else if (modelOverride.includes('grok')) provider = 'groq'
+        else if (modelOverride.includes('llama') || modelOverride.includes('groq')) provider = 'groq'
         else if (modelOverride.includes('gemini')) provider = 'gemini'
     }
 
@@ -173,6 +173,88 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
     return { success: true, meetingId: meeting.id }
 }
 
+/**
+ * Create a meeting with a pre-transcribed text (from browser Whisper).
+ * Skips server-side transcription and goes straight to analysis.
+ */
+export async function createMeetingWithTranscript(
+    transcript: string,
+    storagePath: string,
+    meetingTitle: string = '',
+    durationSeconds: number = 0,
+    providerOverride?: string,
+    modelOverride?: string
+) {
+    const supabase = await createServerClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Not authenticated" }
+
+    // Fetch user settings
+    const { data: settings } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+    // Determine Provider from model
+    let provider = providerOverride || 'gemini'
+    const model = modelOverride || 'gemini-flash'
+    if (modelOverride) {
+        if (modelOverride.includes('gpt')) provider = 'openai'
+        else if (modelOverride.includes('llama') || modelOverride.includes('groq')) provider = 'groq'
+        else if (modelOverride.includes('gemini')) provider = 'gemini'
+    }
+
+    // Check for API keys
+    const userGeminiKey = settings?.gemini_api_key ? decryptText(settings.gemini_api_key) : null
+    const userOpenAIKey = settings?.openai_api_key ? decryptText(settings.openai_api_key) : null
+    const userGroqKey = settings?.groq_api_key ? decryptText(settings.groq_api_key) : null
+
+    let keyToUse: string | undefined = undefined
+    if (provider === 'gemini') keyToUse = userGeminiKey || undefined
+    if (provider === 'openai') keyToUse = userOpenAIKey || undefined
+    if (provider === 'groq') keyToUse = userGroqKey || undefined
+
+    // Create initial meeting record with transcript already included
+    const { data: meeting, error } = await supabase
+        .from('meetings')
+        .insert({
+            user_id: user.id,
+            audio_url: storagePath,
+            title: meetingTitle || 'Processing...',
+            transcript: transcript, // Already have transcript from browser!
+            status: 'processing',
+            duration: durationSeconds,
+            model_used: model,
+        })
+        .select()
+        .single()
+
+    if (error) {
+        console.error("DB Error:", error)
+        return { success: false, error: "Failed to create meeting record" }
+    }
+
+    // Async Analysis (no transcription needed!)
+    ; (async () => {
+        try {
+            console.log(`BrowserTranscript: Starting Analysis with ${provider} (Model: ${model})...`);
+            const analysisService = AIFactory.getService(provider, keyToUse, user.id);
+            await analysisService.analyze(transcript, meeting.id, model);
+        } catch (e: any) {
+            console.error("Analysis failed:", e);
+            const supabaseAdmin = await createServerClient();
+            await supabaseAdmin.from('meetings').update({
+                status: 'failed',
+                summary: `Analysis Error: ${e.message}`
+            }).eq('id', meeting.id)
+        }
+    })();
+
+    return { success: true, meetingId: meeting.id }
+}
+
 export async function togglePreferOwnKey(enabled: boolean) {
     // NOTE: Column prefer_own_key doesn't exist in database
     // Disabling this functionality until column is created
@@ -205,7 +287,7 @@ export async function retryProcessing(meetingId: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
-    const { data: meeting } = await supabase.from('meetings').select('audio_url').eq('id', meetingId).single();
+    const { data: meeting } = await supabase.from('meetings').select('audio_url, model_used').eq('id', meetingId).single();
     if (!meeting) return { success: false, error: "Meeting not found" };
 
     // Reset status to processing
