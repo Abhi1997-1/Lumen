@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
-import { Eye, EyeOff, Loader2, CheckCircle, Key, Zap, Sparkles } from "lucide-react"
+import { Eye, EyeOff, Loader2, CheckCircle, Key, Zap, Sparkles, AlertCircle } from "lucide-react"
 import { saveSettings } from "./actions"
 import { togglePreferOwnKey } from "@/app/actions" // Removed testGeminiConnection for now or need to adapt it
 import { toast } from "sonner"
@@ -22,11 +22,12 @@ interface SettingsFormProps {
     }
 }
 
+// ... imports
 export function SettingsForm({ settings }: SettingsFormProps) {
-    const [selectedProvider, setSelectedProvider] = useState(settings.selectedProvider)
+    // Only tracking Groq related status
     const [isLoading, setIsLoading] = useState(false)
-    const [showKey, setShowKey] = useState<Record<string, boolean>>({})
-    const [testStatus, setTestStatus] = useState<Record<string, { status: 'idle' | 'testing' | 'success' | 'error', message?: string }>>({})
+    const [showKey, setShowKey] = useState(false)
+    const [testStatus, setTestStatus] = useState<{ status: 'idle' | 'testing' | 'success' | 'error', message?: string }>({ status: 'idle' })
 
     async function handleSubmit(formData: FormData) {
         setIsLoading(true)
@@ -41,226 +42,91 @@ export function SettingsForm({ settings }: SettingsFormProps) {
         }
     }
 
-    async function handleTest(provider: string) {
-        setTestStatus(prev => ({ ...prev, [provider]: { status: 'testing' } }))
-
-        // We need to get the current value from the input. 
-        // Since we are using uncontrolled inputs for security (not storing key in state if possible), 
-        // we might validly test 'saved' keys if the input is empty.
-        // However, for a better UX, we should probably grab the value if the user just typed it.
-        // But referencing the ref or input ID is simplest here.
-        const input = document.getElementById(`${provider}_api_key`) as HTMLInputElement
+    async function handleTest() {
+        setTestStatus({ status: 'testing' })
+        const input = document.getElementById(`groq_api_key`) as HTMLInputElement
         const apiKey = input?.value
 
         try {
             const { testConnection } = await import("./actions")
-            const result = await testConnection(provider, apiKey)
+            const result = await testConnection('groq', apiKey)
 
             if (result.success) {
-                setTestStatus(prev => ({ ...prev, [provider]: { status: 'success', message: 'Connection successful!' } }))
-                toast.success(`Connected to ${provider.charAt(0).toUpperCase() + provider.slice(1)}`)
+                setTestStatus({ status: 'success', message: 'Connection successful!' })
+                toast.success(`Connected to Groq`)
             } else {
-                setTestStatus(prev => ({ ...prev, [provider]: { status: 'error', message: result.error } }))
+                setTestStatus({ status: 'error', message: result.error })
                 toast.error(result.error || "Connection failed")
             }
         } catch (e) {
-            setTestStatus(prev => ({ ...prev, [provider]: { status: 'error', message: 'Test failed' } }))
+            setTestStatus({ status: 'error', message: 'Test failed' })
         }
     }
 
-    const toggleKey = (provider: string) => {
-        setShowKey(prev => ({ ...prev, [provider]: !prev[provider] }))
-    }
-
-
-
     return (
-        <form action={handleSubmit} className="space-y-6">
-            <input type="hidden" name="selected_provider" value={selectedProvider} />
+        <form action={handleSubmit} className="space-y-8">
+            <input type="hidden" name="selected_provider" value="groq" />
 
-
-
-            <div className="grid gap-4 md:grid-cols-3">
-                {/* GEMINI CARD */}
-                <div
-                    className={`cursor-pointer rounded-xl border p-4 transition-all hover:border-primary ${selectedProvider === 'gemini' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'bg-card'}`}
-                    onClick={() => setSelectedProvider('gemini')}
-                >
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                            <Zap className="h-5 w-5 text-blue-500" />
-                            <span className="font-semibold">Gemini</span>
+            {/* GROQ CARD (Now the only one, presented as main status) */}
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                            <Zap className="h-6 w-6 text-orange-500 fill-orange-500" />
                         </div>
-                        {selectedProvider === 'gemini' && <CheckCircle className="h-4 w-4 text-primary" />}
+                        <div>
+                            <h3 className="font-semibold text-lg">Groq AI</h3>
+                            <p className="text-sm text-muted-foreground">Lightning fast transcription & analysis</p>
+                        </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-3">Free & Standard. Best all-rounder.</p>
-                    {settings.hasGeminiKey ? (
-                        <div className="text-xs font-medium text-emerald-500 flex items-center gap-1">
-                            <CheckCircle className="h-3 w-3" /> Connected
-                        </div>
-                    ) : (
-                        <div className="text-xs text-amber-500">Not Connected</div>
-                    )}
-                </div>
-
-                {/* GROQ CARD */}
-                <div
-                    className={`cursor-pointer rounded-xl border p-4 transition-all hover:border-primary ${selectedProvider === 'groq' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'bg-card'}`}
-                    onClick={() => setSelectedProvider('groq')}
-                >
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                            <Zap className="h-5 w-5 text-orange-500 fill-orange-500" />
-                            <span className="font-semibold">Groq</span>
-                        </div>
-                        {selectedProvider === 'groq' && <CheckCircle className="h-4 w-4 text-primary" />}
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-3">Lightning Fast. Free tier available.</p>
                     {settings.hasGroqKey ? (
-                        <div className="text-xs font-medium text-emerald-500 flex items-center gap-1">
-                            <CheckCircle className="h-3 w-3" /> Connected
+                        <div className="flex items-center gap-2 bg-emerald-500/10 text-emerald-500 px-3 py-1 rounded-full text-sm font-medium border border-emerald-500/20">
+                            <CheckCircle className="h-4 w-4" /> Connected
                         </div>
                     ) : (
-                        <div className="text-xs text-amber-500">Not Connected</div>
+                        <div className="flex items-center gap-2 bg-amber-500/10 text-amber-500 px-3 py-1 rounded-full text-sm font-medium border border-amber-500/20">
+                            <AlertCircle className="h-4 w-4" /> Not Connected
+                        </div>
                     )}
                 </div>
 
-                {/* OPENAI CARD */}
-                <div
-                    className={`cursor-pointer rounded-xl border p-4 transition-all hover:border-primary ${selectedProvider === 'openai' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'bg-card'}`}
-                    onClick={() => setSelectedProvider('openai')}
-                >
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                            <Zap className="h-5 w-5 text-green-600" />
-                            <span className="font-semibold">OpenAI</span>
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <Label htmlFor="groq_api_key">Your Groq API Key</Label>
+                            <ApiKeyHelpDialog provider="groq" />
                         </div>
-                        {selectedProvider === 'openai' && <CheckCircle className="h-4 w-4 text-primary" />}
+                        <div className="flex gap-3">
+                            <div className="relative flex-1">
+                                <div className="absolute left-3 top-2.5 text-muted-foreground">
+                                    <Key className="h-4 w-4" />
+                                </div>
+                                <Input
+                                    id="groq_api_key" name="groq_api_key"
+                                    type={showKey ? "text" : "password"}
+                                    placeholder={settings.hasGroqKey ? "••••••••••••••••" : "gsk_..."}
+                                    className="pl-9 pr-10"
+                                />
+                                <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0" onClick={() => setShowKey(!showKey)}>
+                                    {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </Button>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleTest}
+                                disabled={testStatus.status === 'testing'}
+                            >
+                                {testStatus.status === 'testing' ? <Loader2 className="h-4 w-4 animate-spin" /> : "Test Key"}
+                            </Button>
+                        </div>
+                        {testStatus.status === 'error' && <p className="text-sm text-destructive flex items-center gap-2"><AlertCircle className="h-4 w-4" /> {testStatus.message}</p>}
+                        {testStatus.status === 'success' && <p className="text-sm text-emerald-500 flex items-center gap-2"><CheckCircle className="h-4 w-4" /> {testStatus.message}</p>}
                     </div>
-                    <p className="text-xs text-muted-foreground mb-3">Premium Quality (GPT-4o). Paid.</p>
-                    {settings.hasOpenAIKey ? (
-                        <div className="text-xs font-medium text-emerald-500 flex items-center gap-1">
-                            <CheckCircle className="h-3 w-3" /> Connected
-                        </div>
-                    ) : (
-                        <div className="text-xs text-amber-500">Not Connected</div>
-                    )}
                 </div>
             </div>
 
-            <div className="space-y-6 pt-4 border-t">
-                <h3 className="text-sm font-medium text-muted-foreground">API Configuration</h3>
-
-                {/* GEMINI INPUT */}
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                        <Label htmlFor="gemini_api_key">Gemini API Key</Label>
-                        <ApiKeyHelpDialog provider="gemini" />
-                    </div>
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <div className="absolute left-3 top-2.5 text-muted-foreground">
-                                <Key className="h-4 w-4" />
-                            </div>
-                            <Input
-                                id="gemini_api_key" name="gemini_api_key"
-                                type={showKey['gemini'] ? "text" : "password"}
-                                placeholder={settings.hasGeminiKey ? "••••••••" : "Paste Key"}
-                                className="pl-9 pr-10"
-                            />
-                            <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0" onClick={() => toggleKey('gemini')}>
-                                {showKey['gemini'] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </Button>
-                        </div>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => handleTest('gemini')}
-                            disabled={testStatus['gemini']?.status === 'testing'}
-                        >
-                            {testStatus['gemini']?.status === 'testing' ? <Loader2 className="h-4 w-4 animate-spin" /> : "Test"}
-                        </Button>
-                    </div>
-                    {testStatus['gemini']?.status === 'error' && (
-                        <div className="text-xs text-destructive mt-1">
-                            {(testStatus['gemini']?.message || "").includes('404')
-                                ? "Error: Model not found. Ensure 'Generative Language API' is enabled in your Google Cloud Console."
-                                : testStatus['gemini']?.message}
-                        </div>
-                    )}
-                    {testStatus['gemini']?.status === 'success' && <p className="text-xs text-emerald-500 mt-1">{testStatus['gemini'].message}</p>}
-                </div>
-
-                {/* GROQ INPUT */}
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                        <Label htmlFor="groq_api_key">Groq API Key</Label>
-                        <ApiKeyHelpDialog provider="groq" />
-                    </div>
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <div className="absolute left-3 top-2.5 text-muted-foreground">
-                                <Key className="h-4 w-4" />
-                            </div>
-                            <Input
-                                id="groq_api_key" name="groq_api_key"
-                                type={showKey['groq'] ? "text" : "password"}
-                                placeholder={settings.hasGroqKey ? "••••••••" : "Paste Key"}
-                                className="pl-9 pr-10"
-                            />
-                            <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0" onClick={() => toggleKey('groq')}>
-                                {showKey['groq'] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </Button>
-                        </div>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => handleTest('groq')}
-                            disabled={testStatus['groq']?.status === 'testing'}
-                        >
-                            {testStatus['groq']?.status === 'testing' ? <Loader2 className="h-4 w-4 animate-spin" /> : "Test"}
-                        </Button>
-                    </div>
-                    {testStatus['groq']?.status === 'error' && <p className="text-xs text-destructive">{testStatus['groq'].message}</p>}
-                    {testStatus['groq']?.status === 'success' && <p className="text-xs text-emerald-500">{testStatus['groq'].message}</p>}
-                </div>
-
-                {/* OPENAI INPUT */}
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                        <Label htmlFor="openai_api_key">OpenAI API Key</Label>
-                        <ApiKeyHelpDialog provider="openai" />
-                    </div>
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <div className="absolute left-3 top-2.5 text-muted-foreground">
-                                <Key className="h-4 w-4" />
-                            </div>
-                            <Input
-                                id="openai_api_key" name="openai_api_key"
-                                type={showKey['openai'] ? "text" : "password"}
-                                placeholder={settings.hasOpenAIKey ? "••••••••" : "Paste Key"}
-                                className="pl-9 pr-10"
-                            />
-                            <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0" onClick={() => toggleKey('openai')}>
-                                {showKey['openai'] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </Button>
-                        </div>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => handleTest('openai')}
-                            disabled={testStatus['openai']?.status === 'testing'}
-                        >
-                            {testStatus['openai']?.status === 'testing' ? <Loader2 className="h-4 w-4 animate-spin" /> : "Test"}
-                        </Button>
-                    </div>
-                    {testStatus['openai']?.status === 'error' && <p className="text-xs text-destructive">{testStatus['openai'].message}</p>}
-                    {testStatus['openai']?.status === 'success' && <p className="text-xs text-emerald-500">{testStatus['openai'].message}</p>}
-                </div>
-            </div>
-
-            <Button type="submit" disabled={isLoading} className="w-full md:w-auto">
+            <Button type="submit" disabled={isLoading} className="w-full md:w-auto" size="lg">
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save Changes"}
             </Button>
         </form>

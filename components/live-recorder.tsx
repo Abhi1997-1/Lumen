@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { createBrowserClient } from "@supabase/ssr"
 import { useRouter } from "next/navigation"
 import { createMeeting } from "@/app/actions"
-import { Mic, Square, Loader2, Signal, Pause, Play, Monitor } from "lucide-react"
+import { Mic, Square, Loader2, Signal, Pause, Play, Monitor, Sparkles } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 
@@ -21,6 +21,7 @@ export function LiveRecorder() {
     const [isRecording, setIsRecording] = useState(false)
     const [isPaused, setIsPaused] = useState(false)
     const [includeSystemAudio, setIncludeSystemAudio] = useState(false)
+    const [usePremium, setUsePremium] = useState(false) // New state for dynamic switching
     const [transcript, setTranscript] = useState<string[]>([])
     const [recordingTime, setRecordingTime] = useState(0)
     const [isUploading, setIsUploading] = useState(false)
@@ -277,7 +278,7 @@ export function LiveRecorder() {
             if (uploadError) throw uploadError
 
             toast.info("Creating meeting...")
-            const result = await createMeeting(filePath, `Live Session ${new Date().toLocaleTimeString()}`, recordingTime)
+            const result = await createMeeting(filePath, `Live Session ${new Date().toLocaleTimeString()}`, recordingTime, usePremium)
 
             if (result.success) {
                 toast.success("Saved! Processing started.")
@@ -352,6 +353,19 @@ export function LiveRecorder() {
                                 id="system-audio-toggle"
                                 checked={includeSystemAudio}
                                 onCheckedChange={setIncludeSystemAudio}
+                                disabled={isRecording}
+                            />
+                        </div>
+
+                        {/* NEW: Premium Processing Toggle */}
+                        <div className="flex items-center gap-3 px-4 border-r border-[#27272a] pr-4 mr-1">
+                            <Label htmlFor="premium-toggle" className="text-xs font-medium text-zinc-400 cursor-pointer hover:text-white transition-colors flex items-center gap-1">
+                                Use Premium <Sparkles className="h-3 w-3 text-amber-400" />
+                            </Label>
+                            <Switch
+                                id="premium-toggle"
+                                checked={usePremium}
+                                onCheckedChange={setUsePremium}
                                 disabled={isRecording}
                             />
                         </div>

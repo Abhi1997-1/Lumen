@@ -40,7 +40,7 @@ const MODEL_CREDIT_COSTS: Record<string, number> = {
     'gpt-4o': 3,
 }
 
-export async function createMeeting(storagePath: string, meetingTitle: string = '', durationSeconds: number = 0) {
+export async function createMeeting(storagePath: string, meetingTitle: string = '', durationSeconds: number = 0, useSystemKey: boolean = false) {
     const supabase = await createServerClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -73,7 +73,17 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
 
             // 1. Mandatory Transcription via Groq Whisper
             console.log("Creation: Starting Mandatory Groq Transcription...");
-            const groqService = AIFactory.getService(user.id);
+
+            // Logic for "Premium Processing" (System Key)
+            // If useSystemKey is true, we pass the system env key directly to getService
+            // The Factory will initialize the service with this key
+            let apiKeyToUse: string | undefined;
+            if (useSystemKey) {
+                apiKeyToUse = process.env.GROQ_API_KEY;
+                console.log("Using System Groq Key for this session.");
+            }
+
+            const groqService = AIFactory.getService(user.id, apiKeyToUse);
             const transcript = await groqService.transcribe(storagePath);
             console.log("Creation: Transcription complete. Length:", transcript.length);
 
