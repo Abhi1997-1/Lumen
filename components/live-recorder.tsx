@@ -80,6 +80,20 @@ export function LiveRecorder() {
 
     const startRecording = async () => {
         try {
+            // 0. Verify API Connection
+            toast.loading("Verifying AI connection...", { id: "verify-ai" });
+            const { verifyGroqConnection } = await import('@/app/actions');
+
+            // Pass the current state of 'usePremium' (System Key) to the server action
+            const check = await verifyGroqConnection(usePremium);
+
+            if (!check.success) {
+                toast.error(`AI Connection Failed: ${check.error}`, { id: "verify-ai" });
+                return; // Stop recording start
+            }
+
+            toast.success("AI Connection Validated", { id: "verify-ai" });
+
             // 1. Get Streams
             const micStream = await navigator.mediaDevices.getUserMedia({ audio: true })
             let finalStream = micStream;

@@ -93,7 +93,9 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
 
         } catch (e: any) {
             console.error("Async processing failed:", e);
-            const supabaseAdmin = await createServerClient();
+            // Use admin client since this runs in background context (no cookies)
+            const { createAdminClient } = await import("@/lib/supabase/server");
+            const supabaseAdmin = await createAdminClient();
             await supabaseAdmin.from('meetings').update({
                 status: 'failed',
                 summary: `Processing Error: ${e.message}`
@@ -690,5 +692,38 @@ export async function deleteUserAccount() {
     } catch (error: any) {
         console.error("Error deleting user account:", error)
         return { success: false, error: error.message || "Failed to delete account" }
+    }
+}
+
+export async function verifyGroqConnection(useSystemKey: boolean = false) {
+    try {
+        const { AIFactory } = await import("@/lib/ai/factory");
+        const { createClient } = await import("@/lib/supabase/server");
+
+        // If checking system key, we pass undefined (Factory uses env if configured) and don't need user ID really, 
+        // but Factory requires a user ID. We can use a placeholder 'system-check'.
+        // If checking user key, we need the real user ID.
+
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        const userId = user ? user.id : 'system-check'; // Fallback if checking system key unauthenticated?
+
+        let apiKeyToUse: string | undefined;
+        if (useSystemKey) {
+            apiKeyToUse = process.env.GROQ_API_KEY;
+            if (!apiKeyToUse) throw new Error("System Groq Key is not configured on server.");
+        }
+
+        // Note: Factory.getService(userId, apiKey)
+        // If apiKey is undefined, it fetches from DB for userId.
+        const service = AIFactory.getService(userId, apiKeyToUse);
+
+        // Lightweight check
+        await service.ask("Hello", "Just a connectivity check. Reply 'OK'.");
+
+        return { success: true };
+    } catch (error: any) {
+        console.error("Groq Verification Method Error:", error);
+        return { success: false, error: error.message };
     }
 }

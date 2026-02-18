@@ -265,6 +265,7 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                 status="Analyzing Audio..."
                 progress={simulatedProgress}
                 onCancel={handleCancel}
+                onDismiss={() => setDismissedProcessing(true)}
             />
         )
     }

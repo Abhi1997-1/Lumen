@@ -1,6 +1,5 @@
 import Groq from 'groq-sdk';
 import fs from 'fs';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { decryptText } from '@/lib/encryption';
 
@@ -141,8 +140,8 @@ export class GroqService {
 
             const result = JSON.parse(content);
 
-            // Save to DB
-            const supabase = await createClient();
+            // Save to DB - Use admin client since this runs in background context (no cookies)
+            const supabase = await createAdminClient();
             await supabase
                 .from('meetings')
                 .update({
@@ -157,7 +156,7 @@ export class GroqService {
 
         } catch (error) {
             console.error("Groq Summary Error:", error);
-            const supabase = await createClient();
+            const supabase = await createAdminClient();
             await supabase.from('meetings').update({
                 status: 'failed',
                 summary: `Processing Error: ${error instanceof Error ? error.message : "Unknown error"}`
