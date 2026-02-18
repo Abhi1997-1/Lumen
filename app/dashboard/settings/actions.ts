@@ -83,6 +83,15 @@ export async function saveSettings(formData: FormData) {
     revalidatePath('/dashboard')
 }
 
+// ... imports
+import { Groq } from 'groq-sdk'
+
+// ... getSettings can stay mostly as is for now, just returning database values. 
+// The UI might still ask for them, but we won't use them. 
+// Ideally we clean up the UI too, but let's fix the build first.
+
+// testConnection needs to lose the imports.
+
 export async function testConnection(provider: string, apiKeyInput?: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -95,28 +104,14 @@ export async function testConnection(provider: string, apiKeyInput?: string) {
     if (!apiKey) {
         const { data: settings } = await supabase
             .from('user_settings')
-            .select('gemini_api_key, groq_api_key, openai_api_key')
+            .select('groq_api_key')
             .eq('user_id', user.id)
             .single()
 
-
-
-        if (provider === 'gemini' && settings?.gemini_api_key) {
-            apiKey = decryptText(settings.gemini_api_key)
-            source = 'personal'
-        } else if (provider === 'groq' && settings?.groq_api_key) {
+        if (provider === 'groq' && settings?.groq_api_key) {
             apiKey = decryptText(settings.groq_api_key)
             source = 'personal'
-        } else if (provider === 'openai' && settings?.openai_api_key) {
-            apiKey = decryptText(settings.openai_api_key)
-            source = 'personal'
         }
-    }
-
-    // Checking system env for Gemini only as fallback
-    if (!apiKey && provider === 'gemini') {
-        apiKey = process.env.GEMINI_API_KEY || ''
-        source = 'system'
     }
 
     if (!apiKey) {
@@ -124,28 +119,16 @@ export async function testConnection(provider: string, apiKeyInput?: string) {
     }
 
     try {
-        if (provider === 'gemini') {
-            const { GoogleGenerativeAI } = await import("@google/generative-ai")
-            const genAI = new GoogleGenerativeAI(apiKey)
-            // Using gemini-2.0-flash-exp (Gemini 1.5 models retired April 2025)
-            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
-            await model.generateContent("Reply with 'OK'")
-        } else if (provider === 'groq') {
-            const { Groq } = await import("groq-sdk")
+        if (provider === 'groq') {
             const groq = new Groq({ apiKey })
             await groq.chat.completions.create({
                 messages: [{ role: "user", content: "Ping" }],
                 model: "llama-3.3-70b-versatile",
             })
-        } else if (provider === 'openai') {
-            const OpenAI = (await import("openai")).default
-            const openai = new OpenAI({ apiKey })
-            await openai.models.list()
+            return { success: true, source }
         } else {
-            return { success: false, error: "Unknown provider" }
+            return { success: false, error: "Provider not supported" }
         }
-
-        return { success: true, source }
     } catch (error: any) {
         console.error(`Test ${provider} connection failed:`, error)
         return { success: false, error: error.message || "Invalid API Key" }

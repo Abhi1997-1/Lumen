@@ -1,42 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    // Disable Turbopack - use webpack for @xenova/transformers WASM compatibility
-    // To re-enable Turbopack later, remove this and add: turbopack: {}
+    // Enable Turbopack as suggested by the error message
+    turbopack: {},
 
-    webpack: (config, { isServer }) => {
-        // Enable WebAssembly
-        config.experiments = {
-            ...config.experiments,
-            asyncWebAssembly: true,
-        };
-
-        // Handle WASM files
-        config.module.rules.push({
-            test: /\.wasm$/,
-            type: 'asset/resource',
-        });
-
-        // Fixes for ONNX Runtime (used by transformers.js)
-        config.resolve.fallback = {
-            ...config.resolve.fallback,
-            fs: false,
-            path: false,
-            crypto: false,
-        };
-
-        // Exclude server-only modules on client
-        if (!isServer) {
-            config.resolve.alias = {
-                ...config.resolve.alias,
-                'sharp$': false,
-                'onnxruntime-node$': false,
-            };
-        }
-
-        return config;
-    },
-
-    // Headers for SharedArrayBuffer (WASM threading)  
+    // We can keep headers for security if needed, but the WASM specific ones 
+    // (Cross-Origin-Opener-Policy, etc.) are likely only needed for browser-side encodings.
+    // I'll keep them just in case other libraries need SharedArrayBuffer, 
+    // but simplified the rest.
     async headers() {
         return [
             {
