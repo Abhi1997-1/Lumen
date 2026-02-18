@@ -11,10 +11,7 @@ import { Mic, Square, Loader2, Signal, Pause, Play, Monitor, Sparkles } from "lu
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 
-interface IWindow extends Window {
-    webkitSpeechRecognition: any;
-    SpeechRecognition: any;
-}
+// IWindow interface removed
 
 export function LiveRecorder() {
     const router = useRouter()
@@ -159,8 +156,44 @@ export function LiveRecorder() {
             }
 
             chunksRef.current = []
-            mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) chunksRef.current.push(e.data)
+
+            let chunkCounter = 0;
+
+            mediaRecorder.ondataavailable = async (e) => {
+                if (e.data.size > 0) {
+                    chunksRef.current.push(e.data) // Keep for final storage
+
+                    // Send to Groq for Live Transcript
+                    // We dispatch independent of the main flow to avoid blocking
+                    const blob = e.data;
+                    const formData = new FormData();
+                    formData.append('audio', blob, 'chunk.webm');
+                    // We need to pass the usePremium state value here. 
+                    // However, inside this closure 'usePremium' might be stale if it changed (though it's disable during recording).
+                    // But we can get it from state.
+                    // Note: Since we are in the startRecording closure, we should be careful. 
+                    // But 'usePremium' is state, so we should rely on the value at the time of startRecording? 
+                    // Actually, let's just use a ref or ensuring we assume it doesn't change during recording (disabled).
+
+                    // Actually, we can't easily access 'transcribeChunkAction' if it's not imported or if this is a Client Component calling Server Action.
+                    // We need to import it.
+
+                    try {
+                        const { transcribeChunkAction } = await import('@/app/actions');
+                        // Pass the usePremium flag. Note: we need to ensure we pass the boolean as string if FormData logic in action expects it.
+                        // In action we used: formData.get('useSystemKey') === 'true'
+                        // We need access to the current 'usePremium' value. 
+                        // Since 'startRecording' closes over 'usePremium', and we disable the switch while recording, it should be fine.
+                        formData.append('useSystemKey', String(usePremium));
+
+                        const result = await transcribeChunkAction(formData);
+                        if (result.success && result.text) {
+                            setTranscript(prev => [...prev, result.text]);
+                        }
+                    } catch (err) {
+                        console.error("Chunk transcription failed", err);
+                    }
+                }
             }
 
             mediaRecorder.onstop = async () => {
@@ -179,40 +212,7 @@ export function LiveRecorder() {
             mediaRecorder.start(1000)
             mediaRecorderRef.current = mediaRecorder
 
-            // 4. Initialize Speech Recognition
-            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-            if (SpeechRecognition) {
-                const recognition = new SpeechRecognition()
-                recognition.continuous = true
-                recognition.interimResults = true
-                recognition.lang = 'en-US'
-
-                recognition.onresult = (event: any) => {
-                    for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        if (event.results[i].isFinal) {
-                            setTranscript(prev => [...prev, event.results[i][0].transcript])
-                        }
-                    }
-                }
-
-                recognition.onerror = (event: any) => {
-                    if (event.error !== 'no-speech') {
-                        console.warn("Speech recognition error", event.error)
-                    }
-                }
-
-                recognition.onend = () => {
-                    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-                        try { recognition.start() } catch { }
-                    }
-                }
-
-                try {
-                    recognition.start()
-                    recognitionRef.current = recognition
-                } catch (e) { }
-            }
+            // 4. Speech Recognition Removed (Using Groq Chunks)
 
             setIsRecording(true)
             setIsPaused(false)
@@ -231,12 +231,10 @@ export function LiveRecorder() {
         if (!mediaRecorderRef.current) return
         if (isPaused) {
             mediaRecorderRef.current.resume()
-            if (recognitionRef.current) try { recognitionRef.current.start() } catch { }
             timerRef.current = window.setInterval(() => { setRecordingTime(prev => prev + 1) }, 1000)
             setIsPaused(false)
         } else {
             mediaRecorderRef.current.pause()
-            if (recognitionRef.current) recognitionRef.current.stop()
             if (timerRef.current) window.clearInterval(timerRef.current)
             setIsPaused(true)
         }
@@ -254,9 +252,9 @@ export function LiveRecorder() {
     }
 
     const stopRecording = async () => {
-        if (!mediaRecorderRef.current || !isRecording) return
-        mediaRecorderRef.current.stop() // Triggers onstop -> upload
-        if (recognitionRef.current) recognitionRef.current.stop()
+        if (mediaRecorderRef.current || isRecording) {
+            mediaRecorderRef.current?.stop() // Triggers onstop -> upload
+        }
         if (timerRef.current) window.clearInterval(timerRef.current)
     }
 

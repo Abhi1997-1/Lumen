@@ -594,6 +594,7 @@ export async function transcribeChunkAction(formData: FormData) {
     try {
         const file = formData.get('audio') as File;
         const language = formData.get('language') as string || 'English';
+        const useSystemKey = formData.get('useSystemKey') === 'true'; // Extract flag
 
         if (!file) return { success: false, text: "" };
 
@@ -601,7 +602,14 @@ export async function transcribeChunkAction(formData: FormData) {
 
         // Use Groq for chunk transcription
         const { AIFactory } = await import("@/lib/ai/factory");
-        const service = AIFactory.getService(user.id);
+
+        // Dynamic Key Selection
+        let apiKeyToUse: string | undefined;
+        if (useSystemKey) {
+            apiKeyToUse = process.env.GROQ_API_KEY;
+        }
+
+        const service = AIFactory.getService(user.id, apiKeyToUse);
 
         const originalText = await service.transcribeChunk(buffer, file.type || 'audio/webm');
 
