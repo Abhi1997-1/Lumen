@@ -87,8 +87,8 @@ export default function AnalyticsPage() {
                     const outputTokens = m.output_tokens || 0;
                     const totalTokens = m.total_tokens || (inputTokens + outputTokens);
 
-                    // Pricing for Gemini 1.5 Flash (approx)
-                    const cost = ((inputTokens / 1_000_000) * 0.075) + ((outputTokens / 1_000_000) * 0.30);
+                    // Pricing for Groq Llama 3.3 70B
+                    const cost = ((inputTokens / 1_000_000) * 0.59) + ((outputTokens / 1_000_000) * 0.79);
 
                     return {
                         ...m,
@@ -179,8 +179,8 @@ export default function AnalyticsPage() {
 
         const totalInput = filteredMeetings.reduce((acc, m) => acc + (m.input_tokens || 0), 0)
         const totalOutput = filteredMeetings.reduce((acc, m) => acc + (m.output_tokens || 0), 0)
-        const inputCost = (totalInput / 1_000_000) * 0.075
-        const outputCost = (totalOutput / 1_000_000) * 0.30
+        const inputCost = (totalInput / 1_000_000) * 0.59
+        const outputCost = (totalOutput / 1_000_000) * 0.79
         const totalCost = inputCost + outputCost
         const avgCostPerMeeting = filteredMeetings.length > 0 ? totalCost / filteredMeetings.length : 0
         const avgTokensPerMeeting = filteredMeetings.length > 0 ? (totalInput + totalOutput) / filteredMeetings.length : 0
@@ -229,7 +229,7 @@ export default function AnalyticsPage() {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
                             <h1 className="text-3xl font-bold tracking-tight text-foreground mb-1">Usage & Token Analytics</h1>
-                            <p className="text-muted-foreground">Track your Gemini API consumption and cost savings.</p>
+                            <p className="text-muted-foreground">Track your Groq API consumption and cost savings.</p>
                         </div>
                         <div className="flex bg-muted rounded-lg p-1">
                             <Button
@@ -505,9 +505,9 @@ export default function AnalyticsPage() {
                         </div>
 
                         <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-4 mt-4">
-                            <div className="text-sm text-muted-foreground mb-1">Pricing (Gemini 1.5 Flash)</div>
+                            <div className="text-sm text-muted-foreground mb-1">Pricing (Groq Llama 3.3 70B)</div>
                             <div className="text-xs text-muted-foreground">
-                                Input: $0.075 / 1M tokens • Output: $0.30 / 1M tokens
+                                Input: $0.59 / 1M tokens • Output: $0.79 / 1M tokens
                             </div>
                         </div>
                     </div>
