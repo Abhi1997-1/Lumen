@@ -31,7 +31,7 @@ export function LiveRecorder() {
     const chunksRef = useRef<Blob[]>([])
     const recognitionRef = useRef<any>(null)
     const streamRef = useRef<MediaStream | null>(null)
-    const timerRef = useRef<NodeJS.Timeout | null>(null)
+    const timerRef = useRef<number | null>(null)
     const audioContextRef = useRef<AudioContext | null>(null)
     const analyserRef = useRef<AnalyserNode | null>(null)
     const animationFrameRef = useRef<number | null>(null)
@@ -51,7 +51,7 @@ export function LiveRecorder() {
     useEffect(() => {
         return () => {
             stopStream()
-            if (timerRef.current) clearInterval(timerRef.current)
+            if (timerRef.current) window.clearInterval(timerRef.current)
             if (audioContextRef.current) audioContextRef.current.close()
             if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current)
         }
@@ -216,7 +216,7 @@ export function LiveRecorder() {
             setIsRecording(true)
             setIsPaused(false)
 
-            timerRef.current = setInterval(() => {
+            timerRef.current = window.setInterval(() => {
                 setRecordingTime(prev => prev + 1)
             }, 1000)
 
@@ -231,12 +231,12 @@ export function LiveRecorder() {
         if (isPaused) {
             mediaRecorderRef.current.resume()
             if (recognitionRef.current) try { recognitionRef.current.start() } catch { }
-            timerRef.current = setInterval(() => { setRecordingTime(prev => prev + 1) }, 1000)
+            timerRef.current = window.setInterval(() => { setRecordingTime(prev => prev + 1) }, 1000)
             setIsPaused(false)
         } else {
             mediaRecorderRef.current.pause()
             if (recognitionRef.current) recognitionRef.current.stop()
-            if (timerRef.current) clearInterval(timerRef.current)
+            if (timerRef.current) window.clearInterval(timerRef.current)
             setIsPaused(true)
         }
     }
@@ -256,7 +256,7 @@ export function LiveRecorder() {
         if (!mediaRecorderRef.current || !isRecording) return
         mediaRecorderRef.current.stop() // Triggers onstop -> upload
         if (recognitionRef.current) recognitionRef.current.stop()
-        if (timerRef.current) clearInterval(timerRef.current)
+        if (timerRef.current) window.clearInterval(timerRef.current)
     }
 
     const uploadRecording = async () => {
@@ -428,7 +428,7 @@ export function LiveRecorder() {
 
                     <div className="flex items-center gap-2 mb-4">
                         <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
-                        <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Gemini Insights</h3>
+                        <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">AI Insights</h3>
                     </div>
 
                     <div className="flex-1 flex items-center justify-center text-center">

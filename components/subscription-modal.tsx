@@ -2,7 +2,7 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Check, Zap, Key, Sparkles, CreditCard, Gift } from "lucide-react"
+import { Check, Zap, Key, Sparkles, CreditCard, Rocket } from "lucide-react"
 import { upgradeTier, purchaseCredits } from "@/app/actions"
 import { toast } from "sonner"
 import { useState } from "react"
@@ -22,11 +22,11 @@ const CREDIT_PACKS = [
     { id: 'value', name: 'Value', price: 10, credits: 1200, popular: false, bonus: '+20%' },
 ]
 
-const AI_MODELS = [
-    { id: 'gemini-flash', name: 'Gemini Flash', cost: 1, speed: '⚡ Fastest', color: 'text-yellow-500' },
-    { id: 'gemini-pro', name: 'Gemini Pro', cost: 2, speed: '🔮 Balanced', color: 'text-purple-500' },
-    { id: 'grok-2', name: 'Grok 2', cost: 2, speed: '🚀 New', color: 'text-blue-500' },
-    { id: 'gpt-4o', name: 'ChatGPT-4o', cost: 3, speed: '🧠 Smartest', color: 'text-emerald-500' },
+// Simplified models list - Just showing Groq capabilities generally
+const AI_FEATURES = [
+    { name: 'Llama 3.3 70B', desc: 'Deep Analysis & Reasoning', icon: Rocket, color: 'text-blue-500' },
+    { name: 'Whisper Large v3', desc: 'Human-level Transcription', icon: Sparkles, color: 'text-purple-500' },
+    { name: 'Ultra-Fast Inference', desc: 'Real-time Results', icon: Zap, color: 'text-yellow-500' },
 ]
 
 export function SubscriptionModal({ open, onOpenChange, currentTier, credits = 0 }: SubscriptionModalProps) {
@@ -139,15 +139,15 @@ export function SubscriptionModal({ open, onOpenChange, currentTier, credits = 0
                             <ul className="space-y-2 text-sm flex-1 mb-4">
                                 <li className="flex items-center gap-2">
                                     <Check className="h-4 w-4 text-purple-500" />
-                                    <span>Use your own API key</span>
+                                    <span>Use your own Groq API key</span>
                                 </li>
                                 <li className="flex items-center gap-2">
                                     <Check className="h-4 w-4 text-purple-500" />
-                                    <span>All 4 AI models</span>
+                                    <span>Unlimited usage (billed by Groq)</span>
                                 </li>
                                 <li className="flex items-center gap-2">
                                     <Check className="h-4 w-4 text-purple-500" />
-                                    <span>Billed by your provider</span>
+                                    <span>Access to Llama 3 & Whisper</span>
                                 </li>
                             </ul>
 
@@ -199,7 +199,7 @@ export function SubscriptionModal({ open, onOpenChange, currentTier, credits = 0
                                 </li>
                                 <li className="flex items-center gap-1.5">
                                     <Check className="h-2.5 w-2.5 text-indigo-400" />
-                                    <span>All 4 AI models included</span>
+                                    <span>Premium AI Models Included</span>
                                 </li>
                                 <li className="flex items-center gap-1.5">
                                     <Check className="h-2.5 w-2.5 text-indigo-400" />
@@ -265,15 +265,17 @@ export function SubscriptionModal({ open, onOpenChange, currentTier, credits = 0
                     </div>
                 )}
 
-                {/* AI Models & Credit Costs */}
+                {/* AI Models / Features */}
                 <div className="mt-4 p-3 rounded-lg bg-muted/50">
-                    <p className="font-medium text-sm mb-2">Available AI Models:</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                        {AI_MODELS.map((model) => (
-                            <div key={model.id} className="flex flex-col items-center p-2 rounded-lg bg-background/50">
-                                <span className={cn("font-medium", model.color)}>{model.name}</span>
-                                <span className="text-muted-foreground">{model.cost} credit/min</span>
-                                <span className="text-[10px] text-muted-foreground">{model.speed}</span>
+                    <p className="font-medium text-sm mb-2">Powered by Groq AI:</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                        {AI_FEATURES.map((feature) => (
+                            <div key={feature.name} className="flex items-center gap-2 p-2 rounded-lg bg-background/50">
+                                <feature.icon className={cn("h-4 w-4", feature.color)} />
+                                <div className="flex flex-col">
+                                    <span className="font-medium">{feature.name}</span>
+                                    <span className="text-[10px] text-muted-foreground">{feature.desc}</span>
+                                </div>
                             </div>
                         ))}
                     </div>

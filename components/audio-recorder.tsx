@@ -32,7 +32,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     const [isProcessingChunk, setIsProcessingChunk] = useState(false)
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-    const timerRef = useRef<NodeJS.Timeout | null>(null)
+    const timerRef = useRef<number | null>(null)
     const chunksRef = useRef<Blob[]>([])
     const transcriptRef = useRef<HTMLDivElement>(null)
     const translationRef = useRef<HTMLDivElement>(null)
@@ -51,7 +51,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     }, [])
 
     const cleanupAudio = () => {
-        if (timerRef.current) clearInterval(timerRef.current)
+        if (timerRef.current) window.clearInterval(timerRef.current)
         if (animationRef.current) cancelAnimationFrame(animationRef.current)
         if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
             audioContextRef.current.close()
@@ -120,7 +120,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
                 setDuration(0);
             }
 
-            timerRef.current = setInterval(() => {
+            timerRef.current = window.setInterval(() => {
                 setDuration(prev => prev + 1)
             }, 1000)
 
@@ -140,7 +140,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         if (mediaRecorderRef.current && isRecording && !isPaused) {
             mediaRecorderRef.current.pause();
             setIsPaused(true);
-            if (timerRef.current) clearInterval(timerRef.current);
+            if (timerRef.current) window.clearInterval(timerRef.current);
             if (animationRef.current) cancelAnimationFrame(animationRef.current);
         }
     }
@@ -149,7 +149,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         if (mediaRecorderRef.current && isRecording && isPaused) {
             mediaRecorderRef.current.resume();
             setIsPaused(false);
-            timerRef.current = setInterval(() => {
+            timerRef.current = window.setInterval(() => {
                 setDuration(prev => prev + 1)
             }, 1000);
 
@@ -197,7 +197,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         if (mediaRecorderRef.current && isRecording) {
             mediaRecorderRef.current.stop()
             setIsRecording(false)
-            if (timerRef.current) clearInterval(timerRef.current)
+            if (timerRef.current) window.clearInterval(timerRef.current)
         }
     }
 

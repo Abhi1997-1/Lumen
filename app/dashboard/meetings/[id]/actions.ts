@@ -1,11 +1,10 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
-import { processMeetingWithGemini } from '@/lib/gemini/service'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 export async function reprocessMeeting(meetingId: string, newModel: string) {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
@@ -25,7 +24,7 @@ export async function reprocessMeeting(meetingId: string, newModel: string) {
     }
 
     // Check for audio file (try both storage_path and audio_url for compatibility)
-    const audioPath = meeting.storage_path || meeting.audio_url
+    const audioPath = meeting.audio_url || meeting.storage_path;
 
     if (!audioPath) {
         return { success: false, error: 'No audio file to reprocess' }
@@ -38,53 +37,19 @@ export async function reprocessMeeting(meetingId: string, newModel: string) {
             .update({ status: 'processing' })
             .eq('id', meetingId)
 
-        // Reprocess with selected model - route to correct provider
-        let result
+        // Reprocess with Groq
+        const { AIFactory } = await import("@/lib/ai/factory");
+        const groqService = AIFactory.getService(user.id);
 
-        if (newModel.startsWith('grok')) {
-            // Use Grok API
-            const { processMeetingWithGrok } = await import('@/lib/grok/service')
-            result = await processMeetingWithGrok(user.id, audioPath, newModel)
-        } else {
-            // Use Gemini API (default)
-            result = await processMeetingWithGemini(user.id, audioPath, newModel)
-        }
+        // 1. Transcribe (if needed, or reuse transcript? Usually reprocess implies re-analyzing with a better model. 
+        // But if the transcript was bad, we might want to re-transcribe. 
+        // GroqService.analyze takes a transcript string.
+        // If we don't have a good transcript, we should retranscribe.
+        // Let's re-transcribe to be safe as this is a "reprocess" action, and we want to leverage Groq Whisper quality.
+        const transcript = await groqService.transcribe(audioPath);
 
-        if (!result.success) {
-            // Restore original status
-            await supabase
-                .from('meetings')
-                .update({ status: 'completed' })
-                .eq('id', meetingId)
-
-            return {
-                success: false,
-                error: result.error,
-                upgradePrompt: result.upgradePrompt,
-                resetAt: result.resetAt
-            }
-        }
-
-        // Update meeting with new results
-        const { error: updateError } = await supabase
-            .from('meetings')
-            .update({
-                transcript: result.transcript,
-                summary: result.summary,
-                action_items: result.action_items,
-                key_topics: result.key_topics,
-                sentiment: result.sentiment,
-                status: 'completed',
-                processing_model: newModel,
-                reprocessed_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', meetingId)
-
-        if (updateError) {
-            console.error('Update error:', updateError)
-            return { success: false, error: 'Failed to save reprocessed results' }
-        }
+        // 2. Analyze
+        await groqService.analyze(transcript, meetingId, newModel || 'llama-3.3-70b-versatile');
 
         revalidatePath(`/dashboard/meetings/${meetingId}`)
         revalidatePath('/dashboard/meetings')

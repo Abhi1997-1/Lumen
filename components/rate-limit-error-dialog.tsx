@@ -63,7 +63,7 @@ export function RateLimitErrorDialog({
                                         <ul className="text-xs space-y-1 text-muted-foreground">
                                             <li>✓ 10x more API requests per day</li>
                                             <li>✓ Priority processing queue</li>
-                                            <li>✓ Use your own API keys (unlimited)</li>
+                                            <li>✓ Use your own Groq API keys (unlimited)</li>
                                             <li>✓ Advanced AI models available</li>
                                         </ul>
                                         <Button asChild size="sm" className="w-full mt-2">
@@ -81,7 +81,7 @@ export function RateLimitErrorDialog({
                             <ul className="list-disc list-inside space-y-1 ml-2">
                                 <li>Wait for the limit to reset</li>
                                 {showUpgrade && <li>Upgrade to Pro for higher limits</li>}
-                                <li>Add your own Gemini API key in Settings (no limits!)</li>
+                                <li>Add your own Groq API key in Settings (no limits!)</li>
                             </ul>
                         </div>
                     </DialogDescription>

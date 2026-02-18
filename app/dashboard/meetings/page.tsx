@@ -16,7 +16,7 @@ import { AdvancedSearchToggle } from '@/components/dashboard/advanced-search-tog
 export default async function MeetingsPage({
     searchParams,
 }: {
-    searchParams: { page?: string, query?: string, date?: string, from_date?: string, to_date?: string }
+    searchParams: Promise<{ page?: string, query?: string, date?: string, from_date?: string, to_date?: string }>
 }) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -25,11 +25,12 @@ export default async function MeetingsPage({
         redirect('/login')
     }
 
-    const currentPage = Number(searchParams?.page) || 1
-    const query = searchParams?.query || ''
-    const dateFilter = searchParams?.date || 'all'
-    const fromDate = searchParams?.from_date
-    const toDate = searchParams?.to_date
+    const resolvedParams = await searchParams
+    const currentPage = Number(resolvedParams?.page) || 1
+    const query = resolvedParams?.query || ''
+    const dateFilter = resolvedParams?.date || 'all'
+    const fromDate = resolvedParams?.from_date
+    const toDate = resolvedParams?.to_date
 
     // Config: 8 items per page
     const ITEMS_PER_PAGE = 8

@@ -115,7 +115,7 @@ export async function MetricsCards() {
                 <CardContent>
                     <div className="text-2xl font-bold text-foreground">{formatTokens(totalTokens)}</div>
                     <p className="text-xs text-muted-foreground mt-1">
-                        Gemini AI tokens
+                        AI processing tokens
                     </p>
                 </CardContent>
             </Card>

@@ -1,0 +1,227 @@
+
+X:\mobile>set JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-17.0.14.7-hotspot 
+
+X:\mobile>cd android 
+
+X:\mobile\android>call gradlew.bat clean assembleRelease --console=plain --no-daemon 
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon JVM discovery is an incubating feature.
+Daemon will be stopped at the end of the build 
+> Task :gradle-plugin:shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle-plugin:settings-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle-plugin:settings-plugin:pluginDescriptors UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:pluginDescriptors UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:processResources UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:processResources UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:shared:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:shared:compileJava NO-SOURCE
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:compileJava NO-SOURCE
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:processResources NO-SOURCE
+> Task :gradle-plugin:shared:processResources NO-SOURCE
+> Task :gradle-plugin:shared:classes UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:classes UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:jar UP-TO-DATE
+> Task :gradle-plugin:shared:jar UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:compileJava NO-SOURCE
+> Task :gradle-plugin:settings-plugin:classes UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:jar UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:compileKotlin UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:compileJava NO-SOURCE
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:classes UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:jar UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo-gradle-plugin:expo-autolinking-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo-module-gradle-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo-module-gradle-plugin:pluginDescriptors UP-TO-DATE
+> Task :expo-module-gradle-plugin:processResources UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin:compileKotlin UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin:compileJava NO-SOURCE
+> Task :expo-gradle-plugin:expo-autolinking-plugin:pluginDescriptors UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin:processResources UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin:classes UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin:jar UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:compileJava NO-SOURCE
+> Task :gradle-plugin:react-native-gradle-plugin:pluginDescriptors UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:processResources UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:classes UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:jar UP-TO-DATE
+> Task :expo-module-gradle-plugin:compileKotlin UP-TO-DATE
+> Task :expo-module-gradle-plugin:compileJava NO-SOURCE
+> Task :expo-module-gradle-plugin:classes UP-TO-DATE
+> Task :expo-module-gradle-plugin:jar UP-TO-DATE
+
+> Configure project :
+[32m[ExpoRootProject][0m Using the following versions:
+  - buildTools:  [32m36.0.0[0m
+  - minSdk:      [32m24[0m
+  - compileSdk:  [32m36[0m
+  - targetSdk:   [32m36[0m
+  - ndk:         [32m27.1.12297006[0m
+  - kotlin:      [32m2.1.20[0m
+  - ksp:         [32m2.1.20-2.0.1[0m
+
+> Configure project :expo
+
+Using expo modules
+  - [32mexpo-constants[0m (18.0.13)
+  - [32mexpo-modules-core[0m (3.0.29)
+  - [33m[?][0m [32mexpo-asset[0m (12.0.12)
+  - [33m[?][0m [32mexpo-av[0m (16.0.8)
+  - [33m[?][0m [32mexpo-file-system[0m (19.0.21)
+  - [33m[?][0m [32mexpo-font[0m (14.0.11)
+  - [33m[?][0m [32mexpo-keep-awake[0m (15.0.8)
+  - [33m[?][0m [32mexpo-linking[0m (8.0.11)
+
+
+> Task :expo-modules-core:externalNativeBuildCleanDebug
+> Task :app:externalNativeBuildCleanDebug
+> Task :app:externalNativeBuildCleanDebugOptimized
+> Task :app:externalNativeBuildCleanRelease
+> Task :app:clean
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+
+> Task :expo-modules-core:externalNativeBuildCleanRelease
+Clean fabric-arm64-v8a, expo-modules-core-arm64-v8a
+
+> Task :react-native-worklets-core:deleteCmakeCache
+> Task :react-native-worklets-core:externalNativeBuildCleanDebug
+> Task :react-native-worklets-core:externalNativeBuildCleanRelease
+
+> Task :react-native-screens:externalNativeBuildCleanDebug
+Clean rnscreens-armeabi-v7a
+Clean rnscreens-arm64-v8a
+Clean rnscreens-x86_64
+Clean rnscreens-x86
+
+> Task :whisper.rn:externalNativeBuildCleanDebug
+Clean rnwhisper-armeabi-v7a, rnwhisper_vfpv4-armeabi-v7a
+Clean rnwhisper-arm64-v8a, rnwhisper_v8fp16_va_2-arm64-v8a, rnwhisper_v8-arm64-v8a
+Clean rnwhisper-x86_64, rnwhisper_x86_64-x86_64
+
+> Task :react-native-worklets:cleanCmakeCache
+> Task :react-native-worklets:externalNativeBuildCleanDebug
+> Task :react-native-worklets:externalNativeBuildCleanRelease
+
+> Task :whisper.rn:externalNativeBuildCleanDebug
+Clean rnwhisper-x86
+
+> Task :react-native-reanimated:cleanCmakeCache
+> Task :react-native-reanimated:externalNativeBuildCleanDebug
+> Task :react-native-reanimated:externalNativeBuildCleanRelease
+
+> Task :react-native-screens:externalNativeBuildCleanRelease
+Clean rnscreens-armeabi-v7a
+Clean rnscreens-arm64-v8a
+Clean rnscreens-x86_64
+
+> Task :expo-constants:clean
+> Task :expo-constants:checkKotlinGradlePluginConfigurationErrors SKIPPED
+
+> Task :whisper.rn:externalNativeBuildCleanRelease
+Clean rnwhisper-armeabi-v7a, rnwhisper_vfpv4-armeabi-v7a
+Clean rnwhisper-arm64-v8a, rnwhisper_v8fp16_va_2-arm64-v8a, rnwhisper_v8-arm64-v8a
+Clean rnwhisper-x86_64, rnwhisper_x86_64-x86_64
+
+> Task :app:generateAutolinkingNewArchitectureFiles
+> Task :app:generateAutolinkingPackageList
+> Task :app:generateCodegenSchemaFromJavaScript SKIPPED
+> Task :app:generateCodegenArtifactsFromSchema SKIPPED
+> Task :app:generateReactNativeEntryPoint
+
+> Task :expo-constants:createExpoConfig
+The NODE_ENV environment variable is required but was not specified. Ensure the project is bundled with Expo CLI or NODE_ENV is set. Using only .env.local and .env
+env: load .env
+env: export EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY
+
+> Task :expo-constants:preBuild
+> Task :expo-constants:preReleaseBuild
+> Task :expo-constants:mergeReleaseJniLibFolders
+> Task :expo-constants:mergeReleaseNativeLibs NO-SOURCE
+> Task :app:buildKotlinToolingMetadata
+> Task :expo-constants:copyReleaseJniLibsProjectOnly
+> Task :expo-constants:generateReleaseBuildConfig
+> Task :expo-constants:generateReleaseResValues
+> Task :expo-constants:generateReleaseResources
+> Task :react-native-async-storage_async-storage:clean
+> Task :react-native-async-storage_async-storage:generateCodegenSchemaFromJavaScript FAILED
+> Task :react-native-safe-area-context:clean
+> Task :react-native-worklets-core:clean
+> Task :expo-constants:packageReleaseResources
+> Task :react-native-fs:clean
+> Task :react-native-reanimated:clean
+> Task :react-native-worklets:clean
+
+> Task :app:createBundleReleaseJsAndAssets
+env: load .env
+env: export EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY
+
+> Task :expo:clean
+> Task :whisper.rn:clean
+
+> Task :app:createBundleReleaseJsAndAssets
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Error "ENOENT" reading contents of "X:\mobile\node_modules\react-native-screens\android\build\intermediates\verified_library_resources", skipping. Add this directory to your ignore list to exclude it.
+Error "ENOENT" reading contents of "X:\mobile\node_modules\react-native-screens\android\build\kotlin\compileReleaseKotlin\classpath-snapshot", skipping. Add this directory to your ignore list to exclude it.
+Error "ENOENT" reading contents of "X:\mobile\node_modules\react-native-screens\android\build\kotlin\compileReleaseKotlin\local-state", skipping. Add this directory to your ignore list to exclude it.
+Error "ENOENT" reading contents of "X:\mobile\node_modules\react-native-screens\android\build\kotlin\compileReleaseKotlin\cacheable", skipping. Add this directory to your ignore list to exclude it.
+
+> Task :react-native-screens:clean
+
+> Task :app:createBundleReleaseJsAndAssets
+Error "ENOENT" reading contents of "X:\mobile\node_modules\react-native-screens\android\build\tmp\kotlin-classes\release\com\swmansion", skipping. Add this directory to your ignore list to exclude it.
+Error "ENOENT" reading contents of "X:\mobile\node_modules\expo-modules-core\android\build\intermediates\stripped_native_libs\release\stripReleaseDebugSymbols\out\lib\arm64-v8a", skipping. Add this directory to your ignore list to exclude it.
+Error "ENOENT" reading contents of "X:\mobile\node_modules\expo-modules-core\android\build\intermediates\stripped_native_libs\release\stripReleaseDebugSymbols\out\lib\armeabi-v7a", skipping. Add this directory to your ignore list to exclude it.
+Error "ENOENT" reading contents of "X:\mobile\node_modules\expo-modules-core\android\build\intermediates\stripped_native_libs\release\stripReleaseDebugSymbols\out\lib\x86_64", skipping. Add this directory to your ignore list to exclude it.
+Error "ENOENT" reading contents of "X:\mobile\node_modules\expo-modules-core\android\build\intermediates\runtime_library_classes_dir\release\bundleLibRuntimeToDirRelease\expo\modules\kotlin", skipping. Add this directory to your ignore list to exclude it.
+Error "ENOENT" reading contents of "X:\mobile\node_modules\expo-modules-core\android\build\intermediates\runtime_library_classes_dir\release\bundleLibRuntimeToDirRelease\expo\modules\rncompatibility", skipping. Add this directory to your ignore list to exclude it.
+Android node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+
+> Task :expo-modules-core:clean
+
+> Task :app:createBundleReleaseJsAndAssets
+Android node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  4.0% (2/5)
+Android node_modules\expo-router\entry.js ▓▓▓░░░░░░░░░░░░░ 19.1% (26/80)
+Android node_modules\expo-router\entry.js ▓▓▓░░░░░░░░░░░░░ 19.1% ( 43/107)
+Android node_modules\expo-router\entry.js ▓▓▓▓▓░░░░░░░░░░░ 35.5% (117/224)
+Android node_modules\expo-router\entry.js ▓▓▓▓▓▓▓░░░░░░░░░ 46.5% (282/477)
+Android node_modules\expo-router\entry.js ▓▓▓▓▓▓▓░░░░░░░░░ 49.0% (416/618)
+ WARN  Attempted to import the module "X:\mobile\node_modules\whisper.rn" which is not listed in the "exports" of "X:\mobile\node_modules\whisper.rn" under the requested subpath ".". Falling back to file-based resolution. Consider updating the call site or asking the package maintainer(s) to expose this API.
+Android node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓░░░░░░░░ 56.1% (610/833)
+Android node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 72.1% (754/888)
+Android node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 89.5% (925/978)
+Android node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.8% (1109/1110)
+Android Bundled 38521ms node_modules\expo-router\entry.js (1116 modules)
+Writing bundle output to: android\app\build\generated\assets\createBundleReleaseJsAndAssets\index.android.bundle
+Writing sourcemap output to: android\app\build\intermediates\sourcemaps\react\release\index.android.bundle.packager.map
+Copying 45 asset files
+Done writing bundle output
+Done writing sourcemap output
+
+[Incubating] Problems report is available at: file:///X:/mobile/android/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':react-native-async-storage_async-storage:generateCodegenSchemaFromJavaScript'.
+> this and base files have different roots: X:\mobile\node_modules\@react-native\codegen\lib\cli\combine\combine-js-to-schema-cli.js and C:\Users\patil\Desktop\Back IMU project\Transcript\mobile\node_modules\@react-native-async-storage\async-storage\android.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 2m 49s
+67 actionable tasks: 43 executed, 24 up-to-date

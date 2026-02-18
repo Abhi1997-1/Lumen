@@ -559,8 +559,6 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
 
                                     <ReprocessButton
                                         meetingId={meeting.id}
-                                        currentModel={meeting.processing_model || 'gemini-flash'}
-                                        tier={user.tier || 'free'}
                                     />
 
                                     <ExportDialog meeting={currentMeeting} />

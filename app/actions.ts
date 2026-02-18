@@ -40,85 +40,11 @@ const MODEL_CREDIT_COSTS: Record<string, number> = {
     'gpt-4o': 3,
 }
 
-export async function createMeeting(storagePath: string, meetingTitle: string = '', durationSeconds: number = 0, providerOverride?: string, modelOverride?: string) {
+export async function createMeeting(storagePath: string, meetingTitle: string = '', durationSeconds: number = 0) {
     const supabase = await createServerClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
-
-    // 1. Fetch user settings
-    const { data: settings } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
-
-    // Determine Provider from model
-    let provider = providerOverride || 'gemini'
-    if (modelOverride) {
-        if (modelOverride.includes('gpt')) provider = 'openai'
-        else if (modelOverride.includes('llama') || modelOverride.includes('groq')) provider = 'groq'
-        else if (modelOverride.includes('gemini')) provider = 'gemini'
-    }
-
-    // Determine Key & Credit Logic
-    const tier = settings?.tier || 'free'
-    const credits = settings?.credits_remaining || 0
-    // NOTE: Column doesn't exist - commenting out for now
-    // const preferOwnKey = settings?.prefer_own_key || false
-    const preferOwnKey = false // Default to false since column doesn't exist
-
-    // Check availability of user keys
-    const userGeminiKey = settings?.gemini_api_key ? decryptText(settings.gemini_api_key) : null
-    const userOpenAIKey = settings?.openai_api_key ? decryptText(settings.openai_api_key) : null
-    const userGroqKey = settings?.groq_api_key ? decryptText(settings.groq_api_key) : null
-
-    let keyToUse: string | undefined = undefined
-    let usingCredits = false
-
-    // Resolve Key based on Provider
-    if (provider === 'gemini') keyToUse = userGeminiKey || undefined
-    if (provider === 'openai') keyToUse = userOpenAIKey || undefined
-    if (provider === 'groq') keyToUse = userGroqKey || undefined
-
-    // Logic:
-    // 1. If preferOwnKey AND we have a key -> Use it (usingCredits = false)
-    // 2. If Pro AND (no key OR !preferOwnKey) -> Use System Key (usingCredits = true)
-    // 3. If Free AND no key -> Block
-
-    if (keyToUse && preferOwnKey) {
-        // Option 1: User prefers their key and has one.
-        usingCredits = false;
-        console.log(`Using user's own key for ${provider} (Preference set)`)
-    } else if (tier === 'pro') {
-        // Option 2: Pro user. 
-        // If they have a key but didn't prefer it, we usually default to credits for Pro convenience?
-        // Or if they DON'T have a key, we MUST use credits.
-        // If they have a key and preferOwnKey is FALSE, we use credits.
-        usingCredits = true;
-        keyToUse = undefined; // Force system key usage downstream if implementation supports it
-    } else if (keyToUse) {
-        // Option 3: Free user but has key (BYOK)
-        usingCredits = false;
-    } else {
-        // Option 4: Block
-        return { success: false, error: "No API key found. Please upgrade to Connect your own key in Settings." }
-    }
-
-    // Calculate Credits if using them
-    const model = modelOverride || 'gemini-flash'
-    const durationMinutes = Math.ceil(durationSeconds / 60)
-    const creditCostPerMin = MODEL_CREDIT_COSTS[model] || 1
-    const creditsNeeded = durationMinutes * creditCostPerMin
-
-    if (usingCredits) {
-        if (credits < creditsNeeded) {
-            return {
-                success: false,
-                error: `Insufficient credits. Need ${creditsNeeded} credits, but you have ${credits}.`
-            }
-        }
-    }
 
     // Create initial meeting record
     const { data: meeting, error } = await supabase
@@ -129,7 +55,7 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
             title: meetingTitle || 'Processing...',
             status: 'processing',
             duration: durationSeconds,
-            model_used: model,
+            model_used: 'llama-3.3-70b-versatile', // Default analysis model
         })
         .select()
         .single()
@@ -142,24 +68,19 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
     // Async Processing
     ; (async () => {
         try {
-            // Re-import dynamically to avoid circular deps if any, or just standard import
-            // const { AIFactory } = await import("@/lib/ai/factory"); 
+            // Re-import dynamically
+            const { AIFactory } = await import("@/lib/ai/factory");
 
-            // 1. Mandatory Transcription via Groq
+            // 1. Mandatory Transcription via Groq Whisper
             console.log("Creation: Starting Mandatory Groq Transcription...");
-            const groqService = AIFactory.getService('groq', userGroqKey, user.id);
+            const groqService = AIFactory.getService(user.id);
             const transcript = await groqService.transcribe(storagePath);
             console.log("Creation: Transcription complete. Length:", transcript.length);
 
-            // 2. Analysis via Selected Provider
-            console.log(`Creation: Starting Analysis with ${provider} (Model: ${model})...`);
-            const analysisService = AIFactory.getService(provider, keyToUse, user.id);
-            await analysisService.analyze(transcript, meeting.id, model);
+            // 2. Analysis via Groq Llama
+            console.log(`Creation: Starting Analysis with Groq (Llama 3)...`);
+            await groqService.analyze(transcript, meeting.id, 'llama-3.3-70b-versatile');
 
-            // Deduct credits if we decided to use them
-            if (usingCredits && creditsNeeded > 0) {
-                await deductCredits(creditsNeeded, meeting.id, model)
-            }
         } catch (e: any) {
             console.error("Async processing failed:", e);
             const supabaseAdmin = await createServerClient();
@@ -173,87 +94,7 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
     return { success: true, meetingId: meeting.id }
 }
 
-/**
- * Create a meeting with a pre-transcribed text (from browser Whisper).
- * Skips server-side transcription and goes straight to analysis.
- */
-export async function createMeetingWithTranscript(
-    transcript: string,
-    storagePath: string,
-    meetingTitle: string = '',
-    durationSeconds: number = 0,
-    providerOverride?: string,
-    modelOverride?: string
-) {
-    const supabase = await createServerClient()
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { success: false, error: "Not authenticated" }
-
-    // Fetch user settings
-    const { data: settings } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
-
-    // Determine Provider from model
-    let provider = providerOverride || 'gemini'
-    const model = modelOverride || 'gemini-flash'
-    if (modelOverride) {
-        if (modelOverride.includes('gpt')) provider = 'openai'
-        else if (modelOverride.includes('llama') || modelOverride.includes('groq')) provider = 'groq'
-        else if (modelOverride.includes('gemini')) provider = 'gemini'
-    }
-
-    // Check for API keys
-    const userGeminiKey = settings?.gemini_api_key ? decryptText(settings.gemini_api_key) : null
-    const userOpenAIKey = settings?.openai_api_key ? decryptText(settings.openai_api_key) : null
-    const userGroqKey = settings?.groq_api_key ? decryptText(settings.groq_api_key) : null
-
-    let keyToUse: string | undefined = undefined
-    if (provider === 'gemini') keyToUse = userGeminiKey || undefined
-    if (provider === 'openai') keyToUse = userOpenAIKey || undefined
-    if (provider === 'groq') keyToUse = userGroqKey || undefined
-
-    // Create initial meeting record with transcript already included
-    const { data: meeting, error } = await supabase
-        .from('meetings')
-        .insert({
-            user_id: user.id,
-            audio_url: storagePath,
-            title: meetingTitle || 'Processing...',
-            transcript: transcript, // Already have transcript from browser!
-            status: 'processing',
-            duration: durationSeconds,
-            model_used: model,
-        })
-        .select()
-        .single()
-
-    if (error) {
-        console.error("DB Error:", error)
-        return { success: false, error: "Failed to create meeting record" }
-    }
-
-    // Async Analysis (no transcription needed!)
-    ; (async () => {
-        try {
-            console.log(`BrowserTranscript: Starting Analysis with ${provider} (Model: ${model})...`);
-            const analysisService = AIFactory.getService(provider, keyToUse, user.id);
-            await analysisService.analyze(transcript, meeting.id, model);
-        } catch (e: any) {
-            console.error("Analysis failed:", e);
-            const supabaseAdmin = await createServerClient();
-            await supabaseAdmin.from('meetings').update({
-                status: 'failed',
-                summary: `Analysis Error: ${e.message}`
-            }).eq('id', meeting.id)
-        }
-    })();
-
-    return { success: true, meetingId: meeting.id }
-}
+// Browser transcription removed.
 
 export async function togglePreferOwnKey(enabled: boolean) {
     // NOTE: Column prefer_own_key doesn't exist in database
@@ -287,7 +128,7 @@ export async function retryProcessing(meetingId: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
-    const { data: meeting } = await supabase.from('meetings').select('audio_url, model_used').eq('id', meetingId).single();
+    const { data: meeting } = await supabase.from('meetings').select('audio_url').eq('id', meetingId).single();
     if (!meeting) return { success: false, error: "Meeting not found" };
 
     // Reset status to processing
@@ -297,39 +138,18 @@ export async function retryProcessing(meetingId: string) {
     try {
         console.log("Retrying meeting:", meetingId, "File:", meeting.audio_url);
 
-        // Fetch Settings again
-        const { data: allSettings } = await supabase
-            .from('user_settings')
-            .select('gemini_api_key, groq_api_key, openai_api_key, selected_provider')
-            .eq('user_id', user.id)
-            .single()
-
-        const provider = allSettings?.selected_provider || 'gemini'
-        let apiKey = ''
-        if (provider === 'groq' && typeof allSettings?.groq_api_key === 'string') apiKey = decryptText(allSettings.groq_api_key)
-        if (provider === 'openai' && typeof allSettings?.openai_api_key === 'string') apiKey = decryptText(allSettings.openai_api_key)
-
         const { AIFactory } = await import("@/lib/ai/factory");
 
         // 1. Mandatory Transcription via Groq
         console.log("Retry: Starting Mandatory Groq Transcription...");
-        // For retry, we need to ensure we have Groq key if needed (usually system key for GroqService if not provided)
-        // But let's look for user's groq key specifically if they have one
-        let groqKey = undefined;
-        if (typeof allSettings?.groq_api_key === 'string') groqKey = decryptText(allSettings.groq_api_key);
-
-        const groqService = AIFactory.getService('groq', groqKey, user.id);
+        const groqService = AIFactory.getService(user.id);
         const transcript = await groqService.transcribe(meeting.audio_url);
 
-        // 2. Analysis via Selected Provider
-        // Ideally we should use the model stored in the meeting record or user settings?
-        // createMeeting stores 'model_used' in meeting table.
-        // Let's use that if available, or default.
-        const modelToUse = meeting.model_used || 'gemini-2.0-flash-exp';
+        // 2. Analysis via Groq
+        const modelToUse = 'llama-3.3-70b-versatile';
+        console.log(`Retry: Starting Analysis with Groq (Model: ${modelToUse})...`);
 
-        console.log(`Retry: Starting Analysis with ${provider} (Model: ${modelToUse})...`);
-        const analysisService = AIFactory.getService(provider, apiKey, user.id);
-        await analysisService.analyze(transcript, meetingId, modelToUse);
+        await groqService.analyze(transcript, meetingId, modelToUse);
 
         revalidatePath(`/dashboard/${meetingId}`);
         return { success: true };
@@ -395,8 +215,9 @@ export async function translateTranscript(text: string, targetLanguage: string) 
     if (!user) return { success: false, error: "Not authenticated" }
 
     try {
-        const { generateTranslation } = await import('@/lib/gemini/service')
-        const translation = await generateTranslation(user.id, text, targetLanguage)
+        const { AIFactory } = await import("@/lib/ai/factory");
+        const service = AIFactory.getService(user.id);
+        const translation = await service.translateText(text, targetLanguage);
         return { success: true, translation }
     } catch (error: any) {
         return { success: false, error: error.message }
@@ -409,20 +230,8 @@ export async function askAI(context: string, question: string) {
     if (!user) return { success: false, error: "Not authenticated" }
 
     try {
-        // Fetch Settings for Factory
-        const { data: allSettings } = await supabase
-            .from('user_settings')
-            .select('gemini_api_key, groq_api_key, openai_api_key, selected_provider')
-            .eq('user_id', user.id)
-            .single()
-
-        const provider = allSettings?.selected_provider || 'gemini'
-        let apiKey = ''
-        if (provider === 'groq' && typeof allSettings?.groq_api_key === 'string') apiKey = decryptText(allSettings.groq_api_key)
-        if (provider === 'openai' && typeof allSettings?.openai_api_key === 'string') apiKey = decryptText(allSettings.openai_api_key)
-
         const { AIFactory } = await import("@/lib/ai/factory");
-        const service = AIFactory.getService(provider, apiKey, user.id);
+        const service = AIFactory.getService(user.id);
 
         const answer = await service.ask(context, question);
 
@@ -448,14 +257,15 @@ export async function translateMeeting(meetingId: string, targetLanguage: string
     if (!meeting) return { success: false, error: "Meeting not found" }
 
     try {
-        const { generateMeetingTranslation } = await import('@/lib/gemini/service')
-        const translation = await generateMeetingTranslation(
-            user.id,
+        const { AIFactory } = await import("@/lib/ai/factory");
+        const service = AIFactory.getService(user.id);
+
+        const translation = await service.translateMeeting(
             meeting.summary || '',
             meeting.action_items || [],
             meeting.transcript || '',
             targetLanguage
-        )
+        );
         return { success: true, data: translation }
     } catch (error: any) {
         return { success: false, error: error.message }
@@ -489,21 +299,9 @@ Action Items: ${Array.isArray(m.action_items) ? m.action_items.join(', ') : ''}
 ---
 `).join('\n');
 
-        // 2. Fetch Settings for Factory
-        const { data: allSettings } = await supabase
-            .from('user_settings')
-            .select('gemini_api_key, groq_api_key, openai_api_key, selected_provider')
-            .eq('user_id', user.id)
-            .single()
-
-        const provider = allSettings?.selected_provider || 'gemini'
-        let apiKey = ''
-        if (provider === 'groq' && typeof allSettings?.groq_api_key === 'string') apiKey = decryptText(allSettings.groq_api_key)
-        if (provider === 'openai' && typeof allSettings?.openai_api_key === 'string') apiKey = decryptText(allSettings.openai_api_key)
-
-        // 3. Execute via Factory
+        // 2. Execute via Factory (Groq Only)
         const { AIFactory } = await import("@/lib/ai/factory");
-        const service = AIFactory.getService(provider, apiKey, user.id);
+        const service = AIFactory.getService(user.id);
 
         const answer = await service.ask(context, question);
         return { success: true, answer }
@@ -516,6 +314,8 @@ Action Items: ${Array.isArray(m.action_items) ? m.action_items.join(', ') : ''}
 
 // --- QUOTA & SUBSCRIPTION ACTIONS ---
 
+// --- QUOTA & SUBSCRIPTION ACTIONS ---
+
 export async function getMonthlyUsage() {
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -524,13 +324,11 @@ export async function getMonthlyUsage() {
     // 1. Get User/Tier Settings
     const { data: settings } = await supabase
         .from('user_settings')
-        .select('gemini_api_key, tier')
+        .select('groq_api_key, tier')
         .eq('user_id', user.id)
         .single()
 
-    // Determine Tier & Limit
-    // Defaults: Free (No Key) = 0 (Blocked), Pro = 10M
-    const hasCustomKey = !!settings?.gemini_api_key
+    const hasCustomKey = !!settings?.groq_api_key
     const tier = settings?.tier || 'free' // 'free' | 'pro'
 
     let limit = 0 // Default to 0 for regular free users without key
@@ -540,13 +338,10 @@ export async function getMonthlyUsage() {
     } else if (hasCustomKey) {
         limit = -1 // Unlimited for BYOK
     } else {
-        // Optional: We could give a tiny "trial" amount here if we wanted, 
-        // but user requested "remove free plan", so 0 is safer to force BYOK/Pro.
         limit = 0
     }
 
     // 2. Calculate Usage (Sum total_tokens from this month's meetings)
-    // Start of month
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
 
@@ -611,9 +406,6 @@ export async function purchaseCredits(credits: number, price: number, packId: st
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
 
-    // TODO: Integrate Stripe payment here
-    // For now, this is a mock that just adds the credits
-
     // Get current credits
     const { data: settings } = await supabase
         .from('user_settings')
@@ -664,17 +456,14 @@ export async function getCredits() {
             hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
         })
 
-        // Use Admin Client to ensure we can read settings (including is_admin) regardless of RLS
-        // This fixes the issue where the user has admin access but can't see the link
         const supabaseAdmin = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         )
 
-        // NOTE: Removed prefer_own_key from SELECT - column doesn't exist in database
         const { data: settings, error } = await supabaseAdmin
             .from('user_settings')
-            .select('credits_remaining, tier, gemini_api_key, credits_reset_at, is_admin')
+            .select('credits_remaining, tier, groq_api_key, credits_reset_at, is_admin')
             .eq('user_id', user.id)
             .single()
 
@@ -693,7 +482,7 @@ export async function getCredits() {
         const result = {
             credits: settings?.credits_remaining || 0,
             tier: settings?.tier || 'free',
-            hasApiKey: !!settings?.gemini_api_key,
+            hasApiKey: !!settings?.groq_api_key,
             creditsResetAt: settings?.credits_reset_at,
             isAdmin: !!settings?.is_admin
         }
@@ -713,11 +502,11 @@ export async function deductCredits(amount: number, meetingId: string, model: st
 
     const { data: settings } = await supabase
         .from('user_settings')
-        .select('credits_remaining, tier, gemini_api_key')
+        .select('credits_remaining, tier, groq_api_key')
         .eq('user_id', user.id)
         .single()
 
-    const hasApiKey = !!settings?.gemini_api_key
+    const hasApiKey = !!settings?.groq_api_key
     const isPro = settings?.tier === 'pro'
     const currentCredits = settings?.credits_remaining || 0
 
@@ -730,7 +519,7 @@ export async function deductCredits(amount: number, meetingId: string, model: st
     if (!isPro && !hasApiKey) {
         return {
             success: false,
-            error: "Please add an API key in Settings or upgrade to Pro to transcribe."
+            error: "Please add a Groq API key in Settings or upgrade to Pro to transcribe."
         }
     }
 
@@ -799,23 +588,20 @@ export async function transcribeChunkAction(formData: FormData) {
         if (!file) return { success: false, text: "" };
 
         const buffer = Buffer.from(await file.arrayBuffer());
-        const { transcribeAudioChunkGemini } = await import('@/lib/gemini/service');
 
-        // Parallel: Get Original AND Translation if language is not English
-        // But for low latency, maybe just get the requested one? 
-        // User asked for "save original and translated". 
-        // Real-time: Displaying both live is expensive (2 calls). 
-        // Let's maximize value: If Lang != English, get Translation. Original audio is saved anyway.
-        // Wait, user said "we see it live as well" (both).
+        // Use Groq for chunk transcription
+        const { AIFactory } = await import("@/lib/ai/factory");
+        const service = AIFactory.getService(user.id);
 
-        const tasks = [transcribeAudioChunkGemini(user.id, buffer, file.type || 'audio/webm', 'English')];
-        if (language !== 'English') {
-            tasks.push(transcribeAudioChunkGemini(user.id, buffer, file.type || 'audio/webm', language));
+        const originalText = await service.transcribeChunk(buffer, file.type || 'audio/webm');
+
+        // Optional: Translate if needed. 
+        // For real-time chunks, doing analysis+translation per chunk might be slow.
+        // But let's try to support it if that was the feature.
+        let translatedText: string | null = null;
+        if (language !== 'English' && originalText) {
+            translatedText = await service.translateText(originalText, language);
         }
-
-        const results = await Promise.all(tasks);
-        const originalText = results[0];
-        const translatedText = results.length > 1 ? results[1] : null;
 
         return { success: true, text: originalText, translatedText };
     } catch (error) {

@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { ModelSelector } from '@/components/model-selector'
 import { RefreshCw, Loader2, AlertCircle } from 'lucide-react'
 import {
     Dialog,
@@ -19,18 +18,20 @@ import { RateLimitErrorDialog } from '@/components/rate-limit-error-dialog'
 interface ReprocessButtonProps {
     meetingId: string
     currentModel?: string
-    tier: string
+    tier?: string
 }
 
-export function ReprocessButton({ meetingId, currentModel, tier }: ReprocessButtonProps) {
+export function ReprocessButton({ meetingId, currentModel, tier = 'free' }: ReprocessButtonProps) {
     const [open, setOpen] = useState(false)
-    const [selectedModel, setSelectedModel] = useState(currentModel || 'gemini-flash')
     const [loading, setLoading] = useState(false)
     const [rateLimitError, setRateLimitError] = useState<{
         message: string
         resetAt: Date
         show: boolean
     }>({ message: '', resetAt: new Date(), show: false })
+
+    // Always default to the best Groq model
+    const selectedModel = 'llama-3.3-70b-versatile'
 
     const handleReprocess = async () => {
         setLoading(true)
@@ -45,17 +46,7 @@ export function ReprocessButton({ meetingId, currentModel, tier }: ReprocessButt
                 // Reload the page to show new results
                 window.location.reload()
             } else {
-                // Check if it's a rate limit error
-                if (result.upgradePrompt && result.resetAt) {
-                    setRateLimitError({
-                        message: result.error || 'Rate limit exceeded',
-                        resetAt: new Date(result.resetAt),
-                        show: true
-                    })
-                    setOpen(false)
-                } else {
-                    toast.error(result.error || 'Reprocessing failed')
-                }
+                toast.error(result.error || 'Reprocessing failed')
             }
         } catch (error) {
             console.error('Reprocess error:', error)
@@ -71,14 +62,14 @@ export function ReprocessButton({ meetingId, currentModel, tier }: ReprocessButt
                 <DialogTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2">
                         <RefreshCw className="h-4 w-4" />
-                        Reprocess with Different Model
+                        Reprocess
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle>Reprocess Meeting</DialogTitle>
                         <DialogDescription>
-                            Choose a different AI model to regenerate the transcript and analysis.
+                            Regenerate transcript and analysis using the latest Groq AI model.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -86,29 +77,16 @@ export function ReprocessButton({ meetingId, currentModel, tier }: ReprocessButt
                         <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 flex items-start gap-2">
                             <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                             <p className="text-sm text-amber-900 dark:text-amber-100">
-                                This will replace your current transcript, summary, and insights with new results from the selected model.
+                                This will replace your current transcript, summary, and insights.
                             </p>
                         </div>
 
-                        <ModelSelector
-                            value={selectedModel}
-                            onValueChange={setSelectedModel}
-                            tier={tier}
-                        />
-
-                        {currentModel && (
-                            <div className="text-xs text-muted-foreground">
-                                Current model: <span className="font-medium">{currentModel}</span>
-                            </div>
-                        )}
-
-                        <div className="text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/20 p-3 rounded border border-blue-200 dark:border-blue-800">
-                            <p className="font-medium mb-1">💡 Tip:</p>
-                            <ul className="text-xs space-y-1">
-                                <li>• Try a more advanced model if quality isn't satisfactory</li>
-                                <li>• Uses your original audio recording</li>
-                                <li>• The original transcript will be replaced</li>
-                            </ul>
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <span className="text-sm font-medium">Model</span>
+                            <span className="text-sm text-muted-foreground flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                Llama 3.3 70B (Groq)
+                            </span>
                         </div>
                     </div>
 
@@ -122,7 +100,7 @@ export function ReprocessButton({ meetingId, currentModel, tier }: ReprocessButt
                         </Button>
                         <Button
                             onClick={handleReprocess}
-                            disabled={loading || selectedModel === currentModel}
+                            disabled={loading}
                         >
                             {loading ? (
                                 <>
@@ -132,7 +110,7 @@ export function ReprocessButton({ meetingId, currentModel, tier }: ReprocessButt
                             ) : (
                                 <>
                                     <RefreshCw className="mr-2 h-4 w-4" />
-                                    Reprocess Meeting
+                                    Confirm Reprocess
                                 </>
                             )}
                         </Button>
