@@ -145,6 +145,7 @@ export class GroqService {
             await supabase
                 .from('meetings')
                 .update({
+                    transcript: transcript.substring(0, 100000), // Ensure transcript is saved
                     title: result.title,
                     summary: result.summary,
                     action_items: result.action_items,

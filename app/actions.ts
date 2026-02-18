@@ -87,6 +87,11 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
             const transcript = await groqService.transcribe(storagePath);
             console.log("Creation: Transcription complete. Length:", transcript.length);
 
+            // Save transcript immediately (so it's preserved even if analysis fails)
+            const { createAdminClient: createAdmin } = await import("@/lib/supabase/server");
+            const adminDb = await createAdmin();
+            await adminDb.from('meetings').update({ transcript }).eq('id', meeting.id);
+
             // 2. Analysis via Groq Llama
             console.log(`Creation: Starting Analysis with Groq (Llama 3)...`);
             await groqService.analyze(transcript, meeting.id, 'llama-3.3-70b-versatile');
