@@ -19,6 +19,7 @@ import { CreditHistory } from "@/components/billing/credit-history"
 import { CreditUsageBreakdown } from "@/components/billing/usage-breakdown"
 import { getSettings } from "./actions"
 import { getIntegrationsStatus } from "./integrations-actions"
+import { UsageView } from "@/components/settings/usage-view"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -587,6 +588,11 @@ export default function SettingsPage() {
                                     </Card>
                                 </div>
                             </div>
+                        </TabsContent>
+
+                        {/* Usage Tab - Embedded */}
+                        <TabsContent value="usage" className="space-y-6">
+                            <UsageView embedded={true} />
                         </TabsContent>
 
                         {/* API Keys Tab */}
