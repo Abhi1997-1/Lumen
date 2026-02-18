@@ -65,48 +65,41 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
         return { success: false, error: "Failed to create meeting record" }
     }
 
-    // Async Processing
-    ; (async () => {
-        try {
-            // Re-import dynamically
-            const { AIFactory } = await import("@/lib/ai/factory");
+    // Process synchronously — Next.js serverless kills background tasks after response
+    try {
+        const { AIFactory } = await import("@/lib/ai/factory");
 
-            // 1. Mandatory Transcription via Groq Whisper
-            console.log("Creation: Starting Mandatory Groq Transcription...");
+        // 1. Mandatory Transcription via Groq Whisper
+        console.log("Creation: Starting Mandatory Groq Transcription...");
 
-            // Logic for "Premium Processing" (System Key)
-            // If useSystemKey is true, we pass the system env key directly to getService
-            // The Factory will initialize the service with this key
-            let apiKeyToUse: string | undefined;
-            if (useSystemKey) {
-                apiKeyToUse = process.env.GROQ_API_KEY;
-                console.log("Using System Groq Key for this session.");
-            }
-
-            const groqService = AIFactory.getService(user.id, apiKeyToUse);
-            const transcript = await groqService.transcribe(storagePath);
-            console.log("Creation: Transcription complete. Length:", transcript.length);
-
-            // Save transcript immediately (so it's preserved even if analysis fails)
-            const { createAdminClient: createAdmin } = await import("@/lib/supabase/server");
-            const adminDb = await createAdmin();
-            await adminDb.from('meetings').update({ transcript }).eq('id', meeting.id);
-
-            // 2. Analysis via Groq Llama
-            console.log(`Creation: Starting Analysis with Groq (Llama 3)...`);
-            await groqService.analyze(transcript, meeting.id, 'llama-3.3-70b-versatile');
-
-        } catch (e: any) {
-            console.error("Async processing failed:", e);
-            // Use admin client since this runs in background context (no cookies)
-            const { createAdminClient } = await import("@/lib/supabase/server");
-            const supabaseAdmin = await createAdminClient();
-            await supabaseAdmin.from('meetings').update({
-                status: 'failed',
-                summary: `Processing Error: ${e.message}`
-            }).eq('id', meeting.id)
+        let apiKeyToUse: string | undefined;
+        if (useSystemKey) {
+            apiKeyToUse = process.env.GROQ_API_KEY;
+            console.log("Using System Groq Key for this session.");
         }
-    })();
+
+        const groqService = AIFactory.getService(user.id, apiKeyToUse);
+        const transcript = await groqService.transcribe(storagePath);
+        console.log("Creation: Transcription complete. Length:", transcript.length);
+
+        // Save transcript immediately (preserved even if analysis fails)
+        const { createAdminClient } = await import("@/lib/supabase/server");
+        const adminDb = await createAdminClient();
+        await adminDb.from('meetings').update({ transcript }).eq('id', meeting.id);
+
+        // 2. Analysis via Groq Llama
+        console.log(`Creation: Starting Analysis with Groq (Llama 3)...`);
+        await groqService.analyze(transcript, meeting.id, 'llama-3.3-70b-versatile');
+
+    } catch (e: any) {
+        console.error("Processing failed:", e);
+        const { createAdminClient } = await import("@/lib/supabase/server");
+        const supabaseAdmin = await createAdminClient();
+        await supabaseAdmin.from('meetings').update({
+            status: 'failed',
+            summary: `Processing Error: ${e.message}`
+        }).eq('id', meeting.id)
+    }
 
     return { success: true, meetingId: meeting.id }
 }
