@@ -8,13 +8,14 @@ import { Progress } from "@/components/ui/progress"
 import {
     Mic,
     Brain,
-    Clock,
-    Activity,
-    Loader2,
-    Zap,
     Timer,
     Hash,
     ArrowLeft,
+    Info,
+    Zap,
+    Activity,
+    Clock,
+    Loader2
 } from "lucide-react"
 import {
     BarChart,
@@ -98,16 +99,32 @@ export function UsageView({ embedded = false }: UsageViewProps) {
         const todayMeetings = meetings.filter(m => new Date(m.created_at) >= todayStart)
         const lastHourMeetings = meetings.filter(m => new Date(m.created_at) >= hourAgo)
 
-        // Audio
-        const audioSecondsLastHour = lastHourMeetings.reduce((s, m) => s + (m.duration || 0), 0)
-        const audioRequestsToday = todayMeetings.filter(m => m.duration > 0).length
+        // Audio logic: Minimum 10s per request if duration > 0 (successful/processed)
+        const getBilledDuration = (m: any) => {
+            // If status is failed, maybe user perceives it as 0? 
+            // But if it consumed API, we should track it. 
+            // Assuming duration is 0 if completely failed before API.
+            // If duration > 0, we enforce 10s minimum.
+            return (m.duration || 0) > 0 ? Math.max(m.duration || 0, 10) : 0;
+        }
+
+        const audioSecondsLastHour = lastHourMeetings.reduce((s, m) => s + getBilledDuration(m), 0)
+
+        // Count request if it has duration OR if status is processing/completed
+        // If it failed with 0 duration, maybe we don't count it against quota? 
+        // Rate limits usually count all requests.
+        // Let's count all non-failed requests + failed ones if they have duration (?)
+        // Simplest: count all that are not 'failed' or have duration > 0.
+        const audioRequestsToday = todayMeetings.filter(m =>
+            (m.duration || 0) > 0 || m.status === 'processing' || m.status === 'completed'
+        ).length
 
         // LLM tokens
         const tokensToday = todayMeetings.reduce((s, m) => s + (m.input_tokens || 0) + (m.output_tokens || 0), 0)
         const llmRequestsToday = todayMeetings.filter(m => (m.input_tokens || 0) > 0).length
 
         // All-time
-        const totalAudioSeconds = meetings.reduce((s, m) => s + (m.duration || 0), 0)
+        const totalAudioSeconds = meetings.reduce((s, m) => s + getBilledDuration(m), 0)
         const totalTokens = meetings.reduce((s, m) => s + (m.input_tokens || 0) + (m.output_tokens || 0), 0)
         const totalInputTokens = meetings.reduce((s, m) => s + (m.input_tokens || 0), 0)
         const totalOutputTokens = meetings.reduce((s, m) => s + (m.output_tokens || 0), 0)
@@ -135,11 +152,13 @@ export function UsageView({ embedded = false }: UsageViewProps) {
             return { date: d, name: format(d, 'MMM d'), audioMin: 0, tokens: 0 }
         })
 
+        const getBilledDuration = (m: any) => (m.duration || 0) > 0 ? Math.max(m.duration || 0, 10) : 0;
+
         meetings.forEach(m => {
             const mDate = new Date(m.created_at)
             const day = labels.find(d => isSameDay(d.date, mDate))
             if (day) {
-                day.audioMin += Math.round((m.duration || 0) / 60)
+                day.audioMin += Math.round(getBilledDuration(m) / 60)
                 day.tokens += (m.input_tokens || 0) + (m.output_tokens || 0)
             }
         })
@@ -208,11 +227,16 @@ export function UsageView({ embedded = false }: UsageViewProps) {
                         {/* Audio Transcription Limits */}
                         <Card className="bg-card border-border">
                             <CardHeader className="pb-3">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                                        <Mic className="h-4 w-4 text-blue-500" />
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                                            <Mic className="h-4 w-4 text-blue-500" />
+                                        </div>
+                                        <CardTitle className="text-base font-semibold">Audio Transcription</CardTitle>
                                     </div>
-                                    <CardTitle className="text-base font-semibold">Audio Transcription</CardTitle>
+                                    <div title="Usage matches Groq billing. Minimum 10s per request.">
+                                        <Info className="h-4 w-4 text-muted-foreground opacity-50" />
+                                    </div>
                                 </div>
                                 <p className="text-xs text-muted-foreground">Whisper model usage limits</p>
                             </CardHeader>
@@ -232,7 +256,9 @@ export function UsageView({ embedded = false }: UsageViewProps) {
                                         value={audioPercent}
                                         className={`h-2.5 rounded-full ${audioPercent > 80 ? '[&>div]:bg-amber-500' : '[&>div]:bg-blue-500'}`}
                                     />
-                                    <p className="text-[10px] text-muted-foreground">Rolling 1-hour window</p>
+                                    <p className="text-[10px] text-muted-foreground flex justify-between">
+                                        <span>Rolling 1-hour window</span>
+                                    </p>
                                 </div>
 
                                 {/* Requests / Day */}
@@ -253,11 +279,14 @@ export function UsageView({ embedded = false }: UsageViewProps) {
                                     <p className="text-[10px] text-muted-foreground">Resets at midnight UTC</p>
                                 </div>
 
-                                {/* All-time stat */}
-                                <div className="pt-2 border-t border-border">
+                                {/* All-time stat & Disclaimer */}
+                                <div className="pt-2 border-t border-border flex flex-col gap-1">
                                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                                         <span>Total transcribed (all time)</span>
                                         <span className="font-medium text-foreground">{formatDuration(stats.totalAudioSeconds)}</span>
+                                    </div>
+                                    <div className="text-[10px] text-muted-foreground italic mt-1">
+                                        * Minimum 10 seconds billed per request
                                     </div>
                                 </div>
                             </CardContent>
@@ -308,14 +337,6 @@ export function UsageView({ embedded = false }: UsageViewProps) {
                                             <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Output</div>
                                             <div className="text-lg font-bold text-foreground">{formatTokens(stats.totalOutputTokens)}</div>
                                         </div>
-                                    </div>
-                                </div>
-
-                                {/* All-time stat */}
-                                <div className="pt-2 border-t border-border">
-                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                        <span>Total tokens (all time)</span>
-                                        <span className="font-medium text-foreground">{formatTokens(stats.totalTokens)}</span>
                                     </div>
                                 </div>
                             </CardContent>

@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -15,6 +15,7 @@ import { PremiumProcessingOverlay } from '@/components/ui/premium-processing-ove
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AudioRecorder } from "@/components/audio-recorder"
+import { ModelSelector } from "@/components/model-selector" // Import
 
 import { useSearchParams } from 'next/navigation'
 import { useAudioCompressor } from '@/hooks/use-audio-compressor'
@@ -28,9 +29,7 @@ export default function NewMeetingPage() {
     const [statusText, setStatusText] = useState('')
     const [title, setTitle] = useState('')
     const [file, setFile] = useState<File | null>(null)
-
-    // Default to Groq Llama 3 for analysis (handled by server default)
-    // No model selection needed for user.
+    const [selectedModel, setSelectedModel] = useState("llama-3.3-70b-versatile") // Default
 
     const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -86,7 +85,13 @@ export default function NewMeetingPage() {
             setStatusText('Processing with Groq AI...')
 
             // Note: createMeeting now defaults to Groq internally
-            const result = await createMeeting(filePath, title || fileToUpload.name, 0)
+            const result = await createMeeting(
+                filePath,
+                title || fileToUpload.name,
+                0,
+                false,
+                selectedModel // Pass Model
+            )
 
             if (!result.success) throw new Error(result.error)
 
@@ -149,6 +154,12 @@ export default function NewMeetingPage() {
                             </CardHeader>
                             <form onSubmit={handleSubmit}>
                                 <CardContent className="grid gap-6">
+                                    {/* Model Selector */}
+                                    <div className="grid gap-2">
+                                        <Label>AI Model</Label>
+                                        <ModelSelector value={selectedModel} onValueChange={setSelectedModel} disabled={loading} />
+                                    </div>
+
                                     <div className="grid gap-2">
                                         <Label htmlFor="file">Select File</Label>
                                         <div className="flex items-center gap-2">

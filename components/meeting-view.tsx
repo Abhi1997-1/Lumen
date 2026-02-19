@@ -1,14 +1,11 @@
-"use strict";
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { PremiumProcessingOverlay } from '@/components/ui/premium-processing-overlay'
-import { ActionItemChecklist } from '@/components/action-item-checklist'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Separator } from '@/components/ui/separator'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { TranscriptView } from '@/components/transcript-view'
 import { AiChatBar } from '@/components/ai-chat-bar'
 import { ModeToggle } from "@/components/theme-toggle"
@@ -19,21 +16,14 @@ import {
     Sparkles,
     FileText,
     Wand2,
-    MessageSquare,
-    Share2,
-    Download,
     CheckSquare,
     ChevronLeft,
-    MoreHorizontal,
-    Bold,
-    Italic,
-    Underline,
-    List,
-    Link as LinkIcon,
     Languages,
     Loader2,
     ArrowLeft,
-    Search
+    Search,
+    Download,
+    Share2
 } from 'lucide-react'
 import { ClientDate } from "@/components/ui/client-date"
 
@@ -62,7 +52,6 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useDebounce } from 'use-debounce';
-import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ExportDialog } from '@/components/export-dialog'
 import { ReprocessButton } from '@/components/reprocess-button'
@@ -101,7 +90,6 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
     const [textSize, setTextSize] = useState("text-base");
 
     // Search State
-    // Initialize empty to prevent hydration mismatch, then sync with URL
     const [transcriptSearch, setTranscriptSearch] = useState("");
     const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
     const [totalMatches, setTotalMatches] = useState(0);
@@ -118,7 +106,7 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
     const [speakers, setSpeakers] = useState<string[]>([]);
     const [speakerMap, setSpeakerMap] = useState<Record<string, string>>({});
 
-    const currentMeeting = translatedData || { ...meeting, title }; // Use local title
+    const currentMeeting = translatedData || { ...meeting, title };
 
     // Auto-save Notes
     useEffect(() => {
@@ -161,10 +149,6 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
         }
         setIsSpeakerModalOpen(false);
         toast.success("Speakers updated");
-        // Force refresh or update local state logic would be needed here deeply, 
-        // but revalidatePath in server action handles the page reload usually, 
-        // OR we should update local translatedData/meeting prop if we want instant feedback without reload.
-        // For now, reliance on revalidatePath.
     }
 
     const handleLanguageChange = async (newLang: string) => {
@@ -199,21 +183,7 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
         }
     };
 
-    const handleExport = async (provider: 'notion' | 'onenote') => {
-        const toastId = toast.loading(`Exporting to ${provider === 'notion' ? 'Notion' : 'OneNote'}...`)
-        try {
-            const result = await exportMeetingToProvider(meeting.id, provider)
-            if (result.success) {
-                toast.success('Export successful!', { id: toastId })
-            } else {
-                toast.error(result.error || 'Export failed', { id: toastId })
-            }
-        } catch (error) {
-            toast.error('Export failed', { id: toastId })
-        }
-    }
-
-    // Simulate progress for the overlay since we don't have real-time socket updates yet
+    // Simulate progress
     const [simulatedProgress, setSimulatedProgress] = useState(10);
     const [dismissedProcessing, setDismissedProcessing] = useState(false);
 
@@ -222,28 +192,28 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
             const interval = setInterval(() => {
                 setSimulatedProgress(prev => {
                     if (prev >= 95) return 95;
-                    return prev + Math.random() * 5; // meaningful increments
+                    return prev + Math.random() * 5;
                 });
             }, 800);
             return () => clearInterval(interval);
         }
     }, [meeting.transcript, meeting.summary]);
 
-    // Poll for status updates if processing
+    // Poll for status updates
     useEffect(() => {
         if (meeting.status === 'processing' && !meeting.transcript) {
             const pollInterval = setInterval(async () => {
                 const { getMeetingStatus } = await import("@/app/actions");
                 const status = await getMeetingStatus(meeting.id);
                 if (status && (status.status === 'failed' || status.status === 'completed')) {
-                    router.refresh(); // Refresh to show error or result
+                    router.refresh();
                 }
             }, 3000);
             return () => clearInterval(pollInterval);
         }
     }, [meeting.id, meeting.status, meeting.transcript, router]);
 
-    // Show Overlay if processing (and NOT failed, and NOT dismissed)
+    // Show Overlay if processing
     if (meeting.status !== 'failed' && !meeting.transcript && !meeting.summary && !dismissedProcessing) {
         const handleCancel = async () => {
             const confirmed = confirm('Are you sure you want to cancel processing? The meeting will be marked as failed.')
@@ -273,7 +243,7 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
     return (
         <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-background text-foreground">
 
-            {/* LEFT COLUMN: AI Assistant Tools (Hidden by default on smaller screens) */}
+            {/* LEFT COLUMN: AI Assistant Tools */}
             <div className="hidden 2xl:flex w-[300px] flex-col border-r border-border/40 bg-card/30 shrink-0">
                 <div className="p-4 border-b border-border/40 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
@@ -284,23 +254,22 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                 </div>
 
                 <div className="p-4 space-y-3 overflow-y-auto flex-1">
-                    <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 mb-4">
-                        <div className="flex gap-3">
-                            <div className="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center shrink-0">
-                                <Sparkles className="h-4 w-4 text-primary" />
-                            </div>
-                            <div className="space-y-1">
-                                <p className="text-sm font-medium text-indigo-300">Analysis Complete</p>
-                                <p className="text-xs text-muted-foreground">
-                                    I&apos;ve identified 3 potential risks in the timeline discussion. Should I highlight them?
-                                </p>
+                    {/* Insights Card */}
+                    {currentMeeting.summary && (
+                        <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 mb-4">
+                            <div className="flex gap-3">
+                                <div className="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center shrink-0">
+                                    <Sparkles className="h-4 w-4 text-primary" />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-sm font-medium text-indigo-300">Analysis Complete</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Meeting processed with {currentMeeting.model_used || 'Gross Output'}.
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex gap-2 mt-3 ml-11">
-                            <Button size="sm" variant="secondary" className="h-7 text-xs bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 border-0">Yes, highlight</Button>
-                            <Button size="sm" variant="ghost" className="h-7 text-xs hover:text-foreground">Ignore</Button>
-                        </div>
-                    </div>
+                    )}
 
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 mt-6">Quick Actions</p>
                     <Dialog open={isSpeakerModalOpen} onOpenChange={setIsSpeakerModalOpen}>
@@ -352,10 +321,10 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                             <div className="relative">
                                 <input
                                     type="text"
-                                    placeholder="Ask AI anything about this meeting..."
-                                    className="w-full bg-background border border-indigo-500/30 rounded-lg pl-4 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder:text-muted-foreground/70"
+                                    placeholder="Ask AI anything..."
+                                    className="w-full bg-background border border-indigo-500/30 rounded-lg pl-4 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                                 />
-                                <Button size="icon" className="absolute right-1.5 top-1.5 h-8 w-8 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white border-0 shadow-lg shadow-indigo-500/25">
+                                <Button size="icon" className="absolute right-1.5 top-1.5 h-8 w-8 bg-gradient-to-r from-indigo-500 to-purple-500 border-0">
                                     <Sparkles className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -364,7 +333,7 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                 </div>
             </div>
 
-            {/* CENTER COLUMN: Main Content (Document) */}
+            {/* CENTER COLUMN: Main Content */}
             <div className="flex-1 flex flex-col min-w-0 bg-background relative transition-opacity duration-300">
                 {isTranslating && (
                     <div className="absolute inset-0 z-50 bg-background/60 backdrop-blur-sm flex items-center justify-center">
@@ -375,7 +344,7 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                     </div>
                 )}
 
-                {/* Visualizer / Audio Player Placeholder (Optional) */}
+                {/* Header Bar */}
                 <div className="h-16 border-b border-border/40 flex items-center justify-between px-6 bg-card/50">
                     <div className="flex items-center gap-4">
                         <Link href="/dashboard/meetings">
@@ -410,11 +379,10 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                                     const toastId = toast.loading("Saving translation...");
                                     const res = await saveTranslatedMeeting(meeting.id, translatedData);
                                     if (res.success) {
-                                        toast.success("Translation saved permanently!", { id: toastId });
+                                        toast.success("Translation saved!", { id: toastId });
                                         router.refresh();
-                                        setTranslatedData(null); // Reset since it's now the 'current'
-                                        setLanguage("English"); // Reset selector visually or keep as is? User might want to know it's Spanish now.
-                                        // Actually, if we overwrite, the 'original' is now Spanish.
+                                        setTranslatedData(null);
+                                        setLanguage("English");
                                     } else {
                                         toast.error("Failed to save", { id: toastId });
                                     }
@@ -427,12 +395,13 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                                 Processed
                             </Badge>
                         )}
+                        <ExportDialog meeting={currentMeeting} />
                     </div>
                 </div>
 
                 {/* Document Canvas */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-8 lg:px-16 max-w-5xl mx-auto w-full">
-                    {/* Stuck Processing / Error Handling */}
+                    {/* Error Handling */}
                     {(meeting.status === 'failed' || (!meeting.transcript && meeting.status === 'completed')) && (
                         <div className="mb-8 p-4 rounded-lg border border-red-500/20 bg-red-500/10 text-red-500 flex items-center gap-3">
                             <div className="h-8 w-8 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
@@ -443,34 +412,17 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                                 <p className="text-xs opacity-90">
                                     {meeting.status === 'failed'
                                         ? (meeting.summary?.startsWith("Processing Error:") ? meeting.summary : "Processing failed. Please try re-uploading.")
-                                        : "Transcription missing. The audio may be corrupt or too short."}
+                                        : "Transcription missing."}
                                 </p>
                             </div>
                             <div className="ml-auto">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20"
-                                    onClick={async () => {
-                                        const { retryProcessing } = await import("@/app/actions");
-                                        const toastId = toast.loading("Retrying...");
-                                        const res = await retryProcessing(meeting.id);
-                                        if (res.success) {
-                                            toast.success("Retry started", { id: toastId });
-                                            router.refresh();
-                                        } else {
-                                            toast.error(res.error || "Retry failed", { id: toastId });
-                                        }
-                                    }}
-                                >
-                                    Retry Processing
-                                </Button>
+                                <ReprocessButton meetingId={meeting.id} />
                             </div>
                         </div>
                     )}
 
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {/* Header */}
+                        {/* Title & Metadata */}
                         <div className="flex flex-col gap-4">
                             {isEditingTitle ? (
                                 <div className="flex items-center gap-2">
@@ -489,7 +441,6 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                                 <h1
                                     onClick={() => setIsEditingTitle(true)}
                                     className="text-xl font-bold text-foreground mb-2 leading-tight hover:bg-accent/50 p-1 -ml-1 rounded cursor-pointer transition-colors border border-transparent hover:border-border"
-                                    title="Click to edit title"
                                 >
                                     {title}
                                 </h1>
@@ -507,97 +458,55 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                                     </span>
                                 </div>
 
+                                {/* Search Input */}
                                 <div className="flex items-center gap-2">
-                                    {/* Search Input for Transcript */}
-                                    <div className="flex items-center gap-2">
-                                        <div className="relative w-48 md:w-64">
-                                            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                                            <Input
-                                                type="search"
-                                                placeholder="Find in transcript..."
-                                                className="pl-8 h-8 text-xs bg-muted/30 border-border"
-                                                value={transcriptSearch}
-                                                onChange={(e) => {
-                                                    setTranscriptSearch(e.target.value);
-                                                    setCurrentMatchIndex(0); // Reset on new search
-                                                }}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        // Go to next match
-                                                        setCurrentMatchIndex(prev => (prev + 1) % totalMatches);
-                                                    }
-                                                }}
-                                            />
-                                        </div>
-                                        {transcriptSearch && totalMatches > 0 && (
-                                            <div className="flex items-center bg-muted/50 rounded-md border border-border h-8">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-full w-8 rounded-none border-r border-border hover:bg-muted"
-                                                    onClick={() => setCurrentMatchIndex(prev => (prev - 1 + totalMatches) % totalMatches)}
-                                                    title="Previous Match"
-                                                >
-                                                    <ChevronLeft className="h-3.5 w-3.5" />
-                                                </Button>
-                                                <div className="px-3 text-xs font-mono text-muted-foreground min-w-[60px] text-center">
-                                                    {currentMatchIndex + 1} / {totalMatches}
-                                                </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-full w-8 rounded-none border-l border-border hover:bg-muted"
-                                                    onClick={() => setCurrentMatchIndex(prev => (prev + 1) % totalMatches)}
-                                                    title="Next Match"
-                                                >
-                                                    <ChevronLeft className="h-3.5 w-3.5 rotate-180" />
-                                                </Button>
+                                    <div className="relative w-48 md:w-64">
+                                        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                                        <Input
+                                            type="search"
+                                            placeholder="Find in transcript..."
+                                            className="pl-8 h-8 text-xs bg-muted/30 border-border"
+                                            value={transcriptSearch}
+                                            onChange={(e) => {
+                                                setTranscriptSearch(e.target.value);
+                                                setCurrentMatchIndex(0);
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    setCurrentMatchIndex(prev => (prev + 1) % totalMatches);
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                    {transcriptSearch && totalMatches > 0 && (
+                                        <div className="flex items-center bg-muted/50 rounded-md border border-border h-8">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-full w-8 rounded-none border-r border-border"
+                                                onClick={() => setCurrentMatchIndex(prev => (prev - 1 + totalMatches) % totalMatches)}
+                                            >
+                                                <ChevronLeft className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <div className="px-3 text-xs font-mono text-muted-foreground min-w-[60px] text-center">
+                                                {currentMatchIndex + 1} / {totalMatches}
                                             </div>
-                                        )}
-                                    </div>
-
-                                    {/* Action Buttons */}
-
-                                    <ReprocessButton
-                                        meetingId={meeting.id}
-                                    />
-
-                                    <ExportDialog meeting={currentMeeting} />
-                                    <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg border border-border">
-                                        <Button
-                                            variant={textSize === 'text-sm' ? 'secondary' : 'ghost'}
-                                            size="icon"
-                                            className="h-6 w-6"
-                                            onClick={() => setTextSize('text-sm')}
-                                            title="Small Text"
-                                        >
-                                            <span className="text-xs">A</span>
-                                        </Button>
-                                        <Button
-                                            variant={textSize === 'text-base' ? 'secondary' : 'ghost'}
-                                            size="icon"
-                                            className="h-6 w-6"
-                                            onClick={() => setTextSize('text-base')}
-                                            title="Medium Text"
-                                        >
-                                            <span className="text-sm">A</span>
-                                        </Button>
-                                        <Button
-                                            variant={textSize === 'text-lg' ? 'secondary' : 'ghost'}
-                                            size="icon"
-                                            className="h-6 w-6"
-                                            onClick={() => setTextSize('text-lg')}
-                                            title="Large Text"
-                                        >
-                                            <span className="text-lg">A</span>
-                                        </Button>
-                                    </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-full w-8 rounded-none border-l border-border"
+                                                onClick={() => setCurrentMatchIndex(prev => (prev + 1) % totalMatches)}
+                                            >
+                                                <ChevronLeft className="h-3.5 w-3.5 rotate-180" />
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
 
                         {/* Summary Section */}
-                        {currentMeeting.summary && (
+                        {currentMeeting.summary ? (
                             <div className="relative group rounded-2xl p-[1px] bg-gradient-to-r from-indigo-500/30 via-purple-500/30 to-pink-500/30 shadow-2xl shadow-indigo-900/10">
                                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 blur-xl opacity-50 group-hover:opacity-75 transition-opacity" />
                                 <div className="relative bg-card/90 backdrop-blur-3xl rounded-2xl p-8 border border-border h-full">
@@ -610,17 +519,68 @@ export function MeetingView({ meeting, user }: MeetingViewProps) {
                                     </p>
                                 </div>
                             </div>
+                        ) : (
+                            <div className="relative rounded-2xl border border-dashed border-border p-8 text-center">
+                                <div className="flex flex-col items-center gap-2">
+                                    <Sparkles className="h-8 w-8 text-muted-foreground/50" />
+                                    <h3 className="font-semibold text-muted-foreground">Analysis Pending</h3>
+                                    <p className="text-sm text-muted-foreground/70">
+                                        Summary is being generated or analysis failed.
+                                    </p>
+                                    <Button variant="outline" size="sm" onClick={() => router.refresh()} className="mt-2">
+                                        Refresh Status
+                                    </Button>
+                                </div>
+                            </div>
                         )}
 
+                        {/* Transcript Section */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between border-b border-border pb-2">
+                                <h3 className="text-lg font-semibold flex items-center gap-2">
+                                    <FileText className="h-5 w-5 text-muted-foreground" />
+                                    Transcript
+                                </h3>
+                                {/* Font Toggle Moved Here */}
+                                <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg border border-border">
+                                    <Button
+                                        variant={textSize === 'text-sm' ? 'secondary' : 'ghost'}
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={() => setTextSize('text-sm')}
+                                        title="Small Text"
+                                    >
+                                        <span className="text-xs">A</span>
+                                    </Button>
+                                    <Button
+                                        variant={textSize === 'text-base' ? 'secondary' : 'ghost'}
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={() => setTextSize('text-base')}
+                                        title="Medium Text"
+                                    >
+                                        <span className="text-sm">A</span>
+                                    </Button>
+                                    <Button
+                                        variant={textSize === 'text-lg' ? 'secondary' : 'ghost'}
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={() => setTextSize('text-lg')}
+                                        title="Large Text"
+                                    >
+                                        <span className="text-lg">A</span>
+                                    </Button>
+                                </div>
+                            </div>
 
-                        {/* Transcript Section - NOW INTERACTIVE */}
-                        <div className={textSize}>
-                            <TranscriptView
-                                originalTranscript={currentMeeting.transcript || ''}
-                                searchTerm={transcriptSearch}
-                                currentMatchIndex={currentMatchIndex}
-                                onMatchesFound={setTotalMatches}
-                            />
+                            <div className={textSize}>
+                                <TranscriptView
+                                    originalTranscript={currentMeeting.transcript || ''}
+                                    searchTerm={transcriptSearch}
+                                    currentMatchIndex={currentMatchIndex}
+                                    onMatchesFound={setTotalMatches}
+                                />
+                            </div>
                         </div>
 
                     </div>
@@ -744,5 +704,3 @@ function ShareIcon(props: any) {
 function ExportIcon(props: any) {
     return <Download {...props} />
 }
-
-

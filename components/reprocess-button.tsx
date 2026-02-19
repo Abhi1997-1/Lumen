@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,8 @@ import {
 import { reprocessMeeting } from '@/app/dashboard/meetings/[id]/actions'
 import { toast } from 'sonner'
 import { RateLimitErrorDialog } from '@/components/rate-limit-error-dialog'
+import { ModelSelector } from "@/components/model-selector" // Import
+import { Label } from "@/components/ui/label"
 
 interface ReprocessButtonProps {
     meetingId: string
@@ -24,18 +26,18 @@ interface ReprocessButtonProps {
 export function ReprocessButton({ meetingId, currentModel, tier = 'free' }: ReprocessButtonProps) {
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [selectedModel, setSelectedModel] = useState("llama-3.3-70b-versatile")
     const [rateLimitError, setRateLimitError] = useState<{
         message: string
         resetAt: Date
         show: boolean
     }>({ message: '', resetAt: new Date(), show: false })
 
-    // Always default to the best Groq model
-    const selectedModel = 'llama-3.3-70b-versatile'
 
     const handleReprocess = async () => {
         setLoading(true)
         try {
+            // Updated to pass selectedModel
             const result = await reprocessMeeting(meetingId, selectedModel)
 
             if (result.success) {
@@ -43,7 +45,6 @@ export function ReprocessButton({ meetingId, currentModel, tier = 'free' }: Repr
                     description: 'The transcript has been regenerated with the new model.'
                 })
                 setOpen(false)
-                // Reload the page to show new results
                 window.location.reload()
             } else {
                 toast.error(result.error || 'Reprocessing failed')
@@ -69,7 +70,7 @@ export function ReprocessButton({ meetingId, currentModel, tier = 'free' }: Repr
                     <DialogHeader>
                         <DialogTitle>Reprocess Meeting</DialogTitle>
                         <DialogDescription>
-                            Regenerate transcript and analysis using the latest Groq AI model.
+                            Regenerate transcript and analysis.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -81,12 +82,9 @@ export function ReprocessButton({ meetingId, currentModel, tier = 'free' }: Repr
                             </p>
                         </div>
 
-                        <div className="flex items-center justify-between p-3 border rounded-lg">
-                            <span className="text-sm font-medium">Model</span>
-                            <span className="text-sm text-muted-foreground flex items-center gap-1">
-                                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                Llama 3.3 70B (Groq)
-                            </span>
+                        <div className="grid gap-2">
+                            <Label>Select AI Model</Label>
+                            <ModelSelector value={selectedModel} onValueChange={setSelectedModel} />
                         </div>
                     </div>
 
@@ -118,7 +116,6 @@ export function ReprocessButton({ meetingId, currentModel, tier = 'free' }: Repr
                 </DialogContent>
             </Dialog>
 
-            {/* Rate Limit Error Dialog */}
             <RateLimitErrorDialog
                 open={rateLimitError.show}
                 onClose={() => setRateLimitError({ ...rateLimitError, show: false })}

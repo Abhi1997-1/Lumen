@@ -40,7 +40,13 @@ const MODEL_CREDIT_COSTS: Record<string, number> = {
     'gpt-4o': 3,
 }
 
-export async function createMeeting(storagePath: string, meetingTitle: string = '', durationSeconds: number = 0, useSystemKey: boolean = false) {
+export async function createMeeting(
+    storagePath: string,
+    meetingTitle: string = '',
+    durationSeconds: number = 0,
+    useSystemKey: boolean = false,
+    model: string = 'llama-3.3-70b-versatile'
+) {
     const supabase = await createServerClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -55,7 +61,7 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
             title: meetingTitle || 'Processing...',
             status: 'processing',
             duration: durationSeconds,
-            model_used: 'llama-3.3-70b-versatile', // Default analysis model
+            model_used: model,
         })
         .select()
         .single()
@@ -88,8 +94,8 @@ export async function createMeeting(storagePath: string, meetingTitle: string = 
         await adminDb.from('meetings').update({ transcript }).eq('id', meeting.id);
 
         // 2. Analysis via Groq Llama
-        console.log(`Creation: Starting Analysis with Groq (Llama 3)...`);
-        await groqService.analyze(transcript, meeting.id, 'llama-3.3-70b-versatile');
+        console.log(`Creation: Starting Analysis with Groq (Model: ${model})...`);
+        await groqService.analyze(transcript, meeting.id, model);
 
     } catch (e: any) {
         console.error("Processing failed:", e);
@@ -133,7 +139,7 @@ export async function togglePreferOwnKey(enabled: boolean) {
     */
 }
 
-export async function retryProcessing(meetingId: string) {
+export async function retryProcessing(meetingId: string, model: string = 'llama-3.3-70b-versatile') {
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Not authenticated" }
@@ -156,10 +162,9 @@ export async function retryProcessing(meetingId: string) {
         const transcript = await groqService.transcribe(meeting.audio_url);
 
         // 2. Analysis via Groq
-        const modelToUse = 'llama-3.3-70b-versatile';
-        console.log(`Retry: Starting Analysis with Groq (Model: ${modelToUse})...`);
+        console.log(`Retry: Starting Analysis with Groq (Model: ${model})...`);
 
-        await groqService.analyze(transcript, meetingId, modelToUse);
+        await groqService.analyze(transcript, meetingId, model);
 
         revalidatePath(`/dashboard/${meetingId}`);
         return { success: true };
